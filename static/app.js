@@ -88,6 +88,17 @@ function handle(msg) {
       appendMsg('*server*', { type: 'system', nick: '--', text: 'Reconnected' });
       break;
 
+    case 'session_expired':
+      state.sessionId = null;
+      state.connected = false;
+      state.ws?.close();
+      state.channels.clear();
+      state.active = null;
+      chatScreen.classList.add('hidden');
+      connectScreen.classList.remove('hidden');
+      showConnectError('Disconnected — server was restarted');
+      break;
+
     case 'message': {
       const target = msg.target.startsWith('#') ? msg.target : msg.from;
       ensureChannel(target);

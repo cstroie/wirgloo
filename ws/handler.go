@@ -40,6 +40,10 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 			if s != nil {
 				logger.L.Info("client resumed", "session", s.ID, "remote", r.RemoteAddr)
 				s.SendResumed()
+			} else {
+				logger.L.Info("session not found, notifying client", "id", id, "remote", r.RemoteAddr)
+				data, _ := json.Marshal(map[string]any{"type": "session_expired"})
+				conn.WriteMessage(websocket.TextMessage, data)
 			}
 		}
 		if s == nil {
