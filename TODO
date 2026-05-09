@@ -2,21 +2,23 @@
 
 ## High value, low effort
 
-- [ ] Populate topic bar from IRC numerics 332/333 (server sends on join)
+- [x] Populate topic bar from IRC numerics 332/333 (server sends on join)
 - [ ] Display MOTD (372/375/376) in *server* tab
 - [ ] Handle KICK — show in channel, remove user from list
 - [ ] Nick tab-completion in the input box
-- [ ] NickServ password field on connect form (PRIVMSG NickServ :IDENTIFY after 001)
+- [x] NickServ password field on connect form (PRIVMSG NickServ :IDENTIFY after 001)
 - [ ] Auto-rejoin channels after WebSocket reconnect
 - [ ] Buffer IRC messages server-side during WebSocket disconnect window (currently dropped)
 
 ## Medium value, medium effort
 
-- [ ] Keep op/voice prefixes from NAMES (353 currently strips @ and +)
+- [x] Keep op/voice prefixes from NAMES (353 currently strips @ and +)
 - [ ] Handle INVITE — show a notice or prompt in *server* tab
 - [ ] Handle MODE — show mode changes as a system message in the channel
 - [ ] Browser notifications for mentions (Notification API)
-- [ ] /whois, /away, /topic commands
+- [x] /topic command
+- [ ] /whois, /away commands
+- [x] /list command
 - [ ] Outgoing message rate limiting (avoid flood-kick)
 
 ## Larger / nice to have
