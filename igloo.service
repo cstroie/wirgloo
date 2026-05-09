@@ -1,0 +1,17 @@
+[Unit]
+Description=igloo web IRC client
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/igloo
+Restart=on-failure
+RestartSec=5
+DynamicUser=yes
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
