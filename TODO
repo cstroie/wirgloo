@@ -10,7 +10,7 @@
 - [x] Password box
 - [x] Accept self-signed certificates
 - [x] Auto-rejoin channels after WebSocket reconnect
-- [ ] Buffer IRC messages server-side during WebSocket disconnect window (currently dropped)
+- [x] Buffer IRC messages server-side during WebSocket disconnect window (currently dropped)
 
 ## Medium value, medium effort
 
