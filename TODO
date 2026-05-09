@@ -4,7 +4,7 @@
 
 - [x] Populate topic bar from IRC numerics 332/333 (server sends on join)
 - [x] Display MOTD (372/375/376) in *server* tab
-- [ ] Handle KICK — show in channel, remove user from list
+- [x] Handle KICK — show in channel, remove user from list
 - [ ] Nick tab-completion in the input box
 - [x] NickServ password field on connect form (PRIVMSG NickServ :IDENTIFY after 001)
 - [x] Password box
