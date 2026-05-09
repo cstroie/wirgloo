@@ -162,6 +162,23 @@ function handle(msg) {
       renderUserlist();
       break;
 
+    case 'list_start':
+      ensureChannel('*list*');
+      state.channels.get('*list*').messages = [];
+      if (state.active === '*list*') renderMessages('*list*');
+      appendMsg('*list*', { type: 'system', nick: '--', text: 'Channel list:' });
+      if (state.active !== '*list*') setActive('*list*');
+      break;
+
+    case 'list_item':
+      ensureChannel('*list*');
+      appendMsg('*list*', { type: 'list', nick: msg.count, text: msg.channel + (msg.topic ? '  ' + msg.topic : '') });
+      break;
+
+    case 'list_end':
+      appendMsg('*list*', { type: 'system', nick: '--', text: 'End of list' });
+      break;
+
     case 'topic': {
       const ch = state.channels.get(msg.channel);
       if (ch) {
@@ -284,10 +301,20 @@ function buildMsgEl(m, target) {
   const el  = document.createElement('div');
   const cls = m.type || 'msg';
   el.className = `msg ${cls}`;
+  const ts = m.ts ? fmtTime(m.ts) : fmtTime(Date.now() / 1000);
 
-  const ts   = m.ts ? fmtTime(m.ts) : fmtTime(Date.now() / 1000);
+  if (cls === 'list') {
+    const [chan, ...rest] = m.text.split('  ');
+    el.innerHTML = `
+      <span class="ts">${ts}</span>
+      <span class="body">
+        <span class="nick-col">${escHtml(m.nick)}</span>
+        <span class="text"><span class="chan">${escHtml(chan)}</span><span class="ltopic">${linkify(escHtml(rest.join('  ')))}</span></span>
+      </span>`;
+    return el;
+  }
+
   const self = m.nick === state.nick;
-
   el.innerHTML = `
     <span class="ts">${ts}</span>
     <span class="body">
@@ -363,6 +390,9 @@ function handleCommand(raw) {
       break;
     case 'TOPIC':
       send({ type: 'raw', line: `TOPIC ${state.active}${arg ? ' :' + arg : ''}` });
+      break;
+    case 'LIST':
+      send({ type: 'raw', line: arg ? `LIST ${arg}` : 'LIST' });
       break;
     case 'QUOTE':
     case 'RAW':

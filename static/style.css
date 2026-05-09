@@ -167,6 +167,9 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .msg.error .text { color: var(--error); }
 .msg.connecting .nick-col { color: var(--text-dim); }
 .msg.connecting .text { color: #a78bfa; font-size: 0.85rem; font-style: italic; }
+.msg.list .nick-col { color: var(--text-dim); font-size: 0.8rem; }
+.msg.list .chan { color: var(--accent); margin-right: 8px; }
+.msg.list .ltopic { color: var(--text-dim); font-size: 0.85rem; }
 
 #input-bar {
   display: flex; gap: 8px; padding: 10px 16px;
