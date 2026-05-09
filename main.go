@@ -1,3 +1,6 @@
+// igloo is a web IRC client. It serves a single-page browser UI and proxies
+// IRC connections over WebSocket, so users can connect to any IRC network
+// from a plain browser without installing anything.
 package main
 
 import (
@@ -35,6 +38,7 @@ func main() {
 	http.HandleFunc("/ws", ws.Handler(reg))
 
 	if *dev {
+		// Serve directly from disk so edits are visible without restarting.
 		logger.L.Info("serving static files from disk")
 		http.Handle("/", http.FileServer(http.Dir("static")))
 	} else {

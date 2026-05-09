@@ -1,3 +1,5 @@
+// Package irc handles the low-level IRC protocol: dialing, the registration
+// handshake, writing lines, reading lines, and parsing RFC 1459 messages.
 package irc
 
 import (
@@ -9,14 +11,19 @@ import (
 	"time"
 )
 
+// Message is a parsed IRC protocol line.
 type Message struct {
-	Prefix  string
-	Nick    string // extracted from prefix
-	Command string
-	Params  []string
-	Trailing string
+	Prefix   string   // raw prefix, e.g. "nick!user@host" or "server"
+	Nick     string   // nick extracted from Prefix; equals Prefix for server messages
+	Command  string   // e.g. "PRIVMSG", "001", "PING"
+	Params   []string // all parameters including the trailing one
+	Trailing string   // text after the " :" separator
 }
 
+// Dial opens a TCP connection to server:port. When useTLS is true the
+// connection is wrapped in TLS; selfSigned disables certificate verification
+// for servers with self-signed certificates. TCP keepalives are enabled on
+// the underlying socket so silent connection drops are detected promptly.
 func Dial(server string, port int, useTLS, selfSigned bool) (net.Conn, error) {
 	addr := fmt.Sprintf("[%s]:%d", server, port)
 	if server[0] != '[' && !containsColon(server) {
@@ -41,6 +48,8 @@ func Dial(server string, port int, useTLS, selfSigned bool) (net.Conn, error) {
 	return conn, nil
 }
 
+// setKeepalive enables TCP keepalives with a 30-second probe interval on conn
+// if it is a *net.TCPConn (plain or the underlying socket of a TLS conn).
 func setKeepalive(conn net.Conn) {
 	if tc, ok := conn.(*net.TCPConn); ok {
 		tc.SetKeepAlive(true)
@@ -48,6 +57,9 @@ func setKeepalive(conn net.Conn) {
 	}
 }
 
+// Handshake sends the IRC registration sequence: PASS (if pass is non-empty),
+// NICK, and USER. It must be called immediately after Dial, before the server
+// starts sending numerics.
 func Handshake(conn net.Conn, nick, user, realname, pass string) error {
 	lines := []string{}
 	if pass != "" {
@@ -65,11 +77,16 @@ func Handshake(conn net.Conn, nick, user, realname, pass string) error {
 	return nil
 }
 
+// WriteLine writes a single IRC line to conn, appending the required CR-LF.
 func WriteLine(conn net.Conn, line string) error {
 	_, err := fmt.Fprintf(conn, "%s\r\n", line)
 	return err
 }
 
+// ReadLoop reads lines from conn and sends them on out. It returns when the
+// connection is closed or when done is closed (the latter allows clean
+// shutdown without waiting for the next read). The out channel is closed
+// when ReadLoop returns so range-based consumers exit naturally.
 func ReadLoop(conn net.Conn, out chan<- string, done <-chan struct{}) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
@@ -83,6 +100,9 @@ func ReadLoop(conn net.Conn, out chan<- string, done <-chan struct{}) {
 	close(out)
 }
 
+// ParseLine parses a raw IRC line into a Message following RFC 1459 syntax.
+// The trailing parameter (after " :") is appended to Params so callers can
+// always index Params without special-casing the trailing field.
 func ParseLine(line string) Message {
 	msg := Message{}
 	if strings.HasPrefix(line, ":") {
@@ -112,6 +132,8 @@ func ParseLine(line string) Message {
 	return msg
 }
 
+// containsColon reports whether s contains a colon, used to detect IPv6
+// addresses that must be bracketed in the dial address.
 func containsColon(s string) bool {
 	for _, c := range s {
 		if c == ':' {
@@ -121,6 +143,8 @@ func containsColon(s string) bool {
 	return false
 }
 
+// nickFromPrefix extracts the nick from a "nick!user@host" prefix string.
+// If there is no "!" the whole prefix is returned (server message).
 func nickFromPrefix(prefix string) string {
 	if idx := strings.Index(prefix, "!"); idx != -1 {
 		return prefix[:idx]
