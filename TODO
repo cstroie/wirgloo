@@ -9,7 +9,7 @@
 - [x] NickServ password field on connect form (PRIVMSG NickServ :IDENTIFY after 001)
 - [x] Password box
 - [x] Accept self-signed certificates
-- [ ] Auto-rejoin channels after WebSocket reconnect
+- [x] Auto-rejoin channels after WebSocket reconnect
 - [ ] Buffer IRC messages server-side during WebSocket disconnect window (currently dropped)
 
 ## Medium value, medium effort
