@@ -192,6 +192,62 @@ func (s *Session) ircLoop(lines <-chan string) {
 			logger.L.Info("NICK", "session", s.ID, "old", msg.Nick, "new", newNick)
 			s.sendWS(map[string]any{"type": "nick", "old": msg.Nick, "new": newNick})
 
+		case "305":
+			s.sendWS(map[string]any{"type": "whois", "text": "You are no longer away"})
+
+		case "306":
+			s.sendWS(map[string]any{"type": "whois", "text": "You are now marked as away"})
+
+		// WHOIS numerics
+		case "311": // whois user
+			if len(msg.Params) < 4 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s (%s@%s): %s", msg.Params[1], msg.Params[2], msg.Params[3], msg.Trailing)})
+
+		case "312": // whois server
+			if len(msg.Params) < 3 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s via %s (%s)", msg.Params[1], msg.Params[2], msg.Trailing)})
+
+		case "313": // whois operator
+			if len(msg.Params) < 2 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s is an IRC operator", msg.Params[1])})
+
+		case "317": // whois idle
+			if len(msg.Params) < 3 {
+				continue
+			}
+			idle := msg.Params[2]
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s idle: %ss", msg.Params[1], idle)})
+
+		case "319": // whois channels
+			if len(msg.Params) < 2 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s in: %s", msg.Params[1], msg.Trailing)})
+
+		case "330": // whois account
+			if len(msg.Params) < 3 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s logged in as %s", msg.Params[1], msg.Params[2])})
+
+		case "318": // end of whois
+			if len(msg.Params) < 2 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("— end of whois for %s", msg.Params[1])})
+
+		case "671": // whois TLS
+			if len(msg.Params) < 2 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s is using a secure connection", msg.Params[1])})
+
 		case "375":
 			s.sendWS(map[string]any{"type": "motd", "text": msg.Trailing})
 

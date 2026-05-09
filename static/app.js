@@ -193,6 +193,11 @@ function handle(msg) {
       renderUserlist();
       break;
 
+    case 'whois':
+      appendMsg('*server*', { type: 'whois', nick: '', text: msg.text });
+      if (state.active !== '*server*') bumpUnread('*server*', false);
+      break;
+
     case 'motd':
       appendMsg('*server*', { type: 'motd', nick: '', text: msg.text });
       break;
@@ -460,6 +465,12 @@ function handleCommand(raw) {
       break;
     case 'LIST':
       send({ type: 'raw', line: arg ? `LIST ${arg}` : 'LIST' });
+      break;
+    case 'WHOIS':
+      if (arg) send({ type: 'raw', line: `WHOIS ${arg}` });
+      break;
+    case 'AWAY':
+      send({ type: 'raw', line: arg ? `AWAY :${arg}` : 'AWAY' });
       break;
     case 'QUOTE':
     case 'RAW':

@@ -169,6 +169,8 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .msg.connecting .text { color: #a78bfa; font-size: 0.85rem; font-style: italic; }
 .msg.motd .nick-col { color: var(--text-dim); }
 .msg.motd .text { color: var(--text-dim); font-size: 0.85rem; }
+.msg.whois .nick-col { color: var(--text-dim); }
+.msg.whois .text { color: var(--notice); font-size: 0.85rem; }
 .msg.list .nick-col { color: var(--text-dim); font-size: 0.8rem; }
 .msg.list .chan { color: var(--accent); margin-right: 8px; }
 .msg.list .ltopic { color: var(--text-dim); font-size: 0.85rem; }
