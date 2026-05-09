@@ -85,7 +85,7 @@ func (r *Registry) Remove(id string) {
 	r.mu.Unlock()
 }
 
-func (s *Session) Connect(server string, port int, nick string, useTLS bool, nspass string) error {
+func (s *Session) Connect(server string, port int, nick string, useTLS bool, pass, nspass string) error {
 	logger.L.Info("connecting to IRC", "session", s.ID, "server", server, "port", port, "nick", nick, "tls", useTLS)
 	conn, err := irc.Dial(server, port, useTLS)
 	if err != nil {
@@ -98,7 +98,7 @@ func (s *Session) Connect(server string, port int, nick string, useTLS bool, nsp
 	s.nspass = nspass
 	s.mu.Unlock()
 
-	if err := irc.Handshake(conn, nick, nick, "igloo user"); err != nil {
+	if err := irc.Handshake(conn, nick, nick, "igloo user", pass); err != nil {
 		conn.Close()
 		logger.L.Error("IRC handshake failed", "session", s.ID, "err", err)
 		return err

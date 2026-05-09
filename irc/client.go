@@ -27,11 +27,15 @@ func Dial(server string, port int, useTLS bool) (net.Conn, error) {
 	return net.Dial("tcp", addr)
 }
 
-func Handshake(conn net.Conn, nick, user, realname string) error {
-	lines := []string{
+func Handshake(conn net.Conn, nick, user, realname, pass string) error {
+	lines := []string{}
+	if pass != "" {
+		lines = append(lines, fmt.Sprintf("PASS %s", pass))
+	}
+	lines = append(lines,
 		fmt.Sprintf("NICK %s", nick),
 		fmt.Sprintf("USER %s 0 * :%s", user, realname),
-	}
+	)
 	for _, l := range lines {
 		if _, err := fmt.Fprintf(conn, "%s\r\n", l); err != nil {
 			return err

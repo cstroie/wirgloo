@@ -34,6 +34,7 @@ connectForm.addEventListener('submit', e => {
   const port     = parseInt($('port').value);
   const nick     = $('nick').value.trim();
   const tls      = $('tls').checked;
+  const pass     = $('pass').value;
   const nspass   = $('nickserv-pass').value;
   if (!server || !nick) return;
   connectError.classList.add('hidden');
@@ -43,20 +44,20 @@ connectForm.addEventListener('submit', e => {
   setActive('*server*');
   myNick.textContent = nick;
   appendMsg('*server*', { type: 'connecting', nick: '--', text: `Connecting to ${server}:${port}…` });
-  openWS(server, port, nick, tls, nspass);
+  openWS(server, port, nick, tls, pass, nspass);
 });
 
 $('tls').addEventListener('change', function() {
   $('port').value = this.checked ? 6697 : 6667;
 });
 
-function openWS(server, port, nick, tls, nspass) {
+function openWS(server, port, nick, tls, pass, nspass) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
   state.ws = ws;
 
   ws.onopen = () => {
-    send({ type: 'connect', server, port, nick, tls, nspass });
+    send({ type: 'connect', server, port, nick, tls, pass, nspass });
   };
 
   ws.onmessage = e => {
