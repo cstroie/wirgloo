@@ -3,10 +3,10 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"igloo/logger"
 	"igloo/session"
 )
 
@@ -30,15 +30,18 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println("ws upgrade:", err)
+			logger.L.Warn("websocket upgrade failed", "remote", r.RemoteAddr, "err", err)
 			return
 		}
 
 		s := reg.New(conn)
+		logger.L.Info("client connected", "session", s.ID, "remote", r.RemoteAddr)
+
 		defer func() {
 			s.Close()
 			reg.Remove(s.ID)
 			conn.Close()
+			logger.L.Info("client disconnected", "session", s.ID, "nick", s.Nick)
 		}()
 
 		for {
@@ -48,10 +51,12 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 			}
 			var msg inMsg
 			if err := json.Unmarshal(raw, &msg); err != nil {
+				logger.L.Warn("invalid message", "session", s.ID, "err", err)
 				continue
 			}
+			logger.L.Debug("ws message", "session", s.ID, "type", msg.Type)
 			if err := dispatch(s, msg); err != nil {
-				log.Printf("dispatch error [%s]: %v", msg.Type, err)
+				logger.L.Error("dispatch error", "session", s.ID, "type", msg.Type, "err", err)
 			}
 		}
 	}

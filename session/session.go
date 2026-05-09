@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"igloo/irc"
+	"igloo/logger"
 )
 
 type Session struct {
@@ -48,8 +49,10 @@ func (r *Registry) Remove(id string) {
 }
 
 func (s *Session) Connect(server string, port int, nick string, useTLS bool) error {
+	logger.L.Info("connecting to IRC", "session", s.ID, "server", server, "port", port, "nick", nick, "tls", useTLS)
 	conn, err := irc.Dial(server, port, useTLS)
 	if err != nil {
+		logger.L.Error("IRC dial failed", "session", s.ID, "server", server, "err", err)
 		return err
 	}
 	s.mu.Lock()
@@ -57,8 +60,9 @@ func (s *Session) Connect(server string, port int, nick string, useTLS bool) err
 	s.Nick = nick
 	s.mu.Unlock()
 
-	if err := irc.Handshake(conn, nick, nick, "wirc user"); err != nil {
+	if err := irc.Handshake(conn, nick, nick, "igloo user"); err != nil {
 		conn.Close()
+		logger.L.Error("IRC handshake failed", "session", s.ID, "err", err)
 		return err
 	}
 
@@ -74,8 +78,11 @@ func (s *Session) ircLoop(lines <-chan string) {
 		switch msg.Command {
 		case "PING":
 			s.SendIRC("PONG :" + msg.Trailing)
+
 		case "001":
+			logger.L.Info("IRC connected", "session", s.ID, "nick", s.Nick)
 			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick})
+
 		case "PRIVMSG":
 			if len(msg.Params) < 2 {
 				continue
@@ -84,23 +91,29 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if strings.HasPrefix(text, "\x01ACTION ") && strings.HasSuffix(text, "\x01") {
 				text = "/me " + strings.TrimSuffix(strings.TrimPrefix(text, "\x01ACTION "), "\x01")
 			}
+			logger.L.Debug("PRIVMSG", "session", s.ID, "from", msg.Nick, "target", target)
 			s.sendWS(map[string]any{
 				"type": "message", "from": msg.Nick,
 				"target": target, "text": text,
 				"ts": time.Now().Unix(),
 			})
+
 		case "JOIN":
 			channel := msg.Trailing
 			if channel == "" && len(msg.Params) > 0 {
 				channel = msg.Params[0]
 			}
+			logger.L.Info("JOIN", "session", s.ID, "nick", msg.Nick, "channel", channel)
 			s.sendWS(map[string]any{"type": "join", "nick": msg.Nick, "channel": channel})
+
 		case "PART":
 			channel := ""
 			if len(msg.Params) > 0 {
 				channel = msg.Params[0]
 			}
+			logger.L.Info("PART", "session", s.ID, "nick", msg.Nick, "channel", channel)
 			s.sendWS(map[string]any{"type": "part", "nick": msg.Nick, "channel": channel})
+
 		case "NICK":
 			newNick := msg.Trailing
 			if newNick == "" && len(msg.Params) > 0 {
@@ -111,24 +124,35 @@ func (s *Session) ircLoop(lines <-chan string) {
 				s.Nick = newNick
 				s.mu.Unlock()
 			}
+			logger.L.Info("NICK", "session", s.ID, "old", msg.Nick, "new", newNick)
 			s.sendWS(map[string]any{"type": "nick", "old": msg.Nick, "new": newNick})
-		case "353": // RPL_NAMREPLY
+
+		case "353":
 			if len(msg.Params) < 3 {
 				continue
 			}
 			channel := msg.Params[len(msg.Params)-2]
 			nicks := strings.Fields(msg.Trailing)
+			logger.L.Debug("NAMES", "session", s.ID, "channel", channel, "count", len(nicks))
 			s.sendWS(map[string]any{"type": "names", "channel": channel, "nicks": nicks})
-		case "433": // ERR_NICKNAMEINUSE
+
+		case "433":
+			logger.L.Warn("nick in use", "session", s.ID, "nick", s.Nick)
 			s.sendWS(map[string]any{"type": "error", "text": "Nickname already in use"})
+
 		case "ERROR":
+			logger.L.Error("IRC ERROR", "session", s.ID, "text", msg.Trailing)
 			s.sendWS(map[string]any{"type": "error", "text": msg.Trailing})
+
 		case "QUIT":
+			logger.L.Debug("QUIT", "session", s.ID, "nick", msg.Nick)
 			s.sendWS(map[string]any{"type": "quit", "nick": msg.Nick, "text": msg.Trailing})
+
 		case "NOTICE":
 			if len(msg.Params) < 2 {
 				continue
 			}
+			logger.L.Debug("NOTICE", "session", s.ID, "from", msg.Nick, "target", msg.Params[0])
 			s.sendWS(map[string]any{
 				"type": "notice", "from": msg.Nick,
 				"target": msg.Params[0], "text": msg.Params[1],
@@ -136,6 +160,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			})
 		}
 	}
+	logger.L.Info("IRC read loop ended", "session", s.ID)
 	s.sendWS(map[string]any{"type": "disconnected", "text": "IRC connection closed"})
 }
 
