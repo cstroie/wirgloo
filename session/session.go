@@ -18,12 +18,13 @@ import (
 const wsReconnectWindow = 60 * time.Second
 
 type Session struct {
-	ID   string
-	Nick string
-	mu   sync.Mutex
-	ws   *websocket.Conn
-	conn net.Conn
-	done chan struct{}
+	ID     string
+	Nick   string
+	mu     sync.Mutex
+	ws     *websocket.Conn
+	conn   net.Conn
+	done   chan struct{}
+	nspass string
 }
 
 type Registry struct {
@@ -84,7 +85,7 @@ func (r *Registry) Remove(id string) {
 	r.mu.Unlock()
 }
 
-func (s *Session) Connect(server string, port int, nick string, useTLS bool) error {
+func (s *Session) Connect(server string, port int, nick string, useTLS bool, nspass string) error {
 	logger.L.Info("connecting to IRC", "session", s.ID, "server", server, "port", port, "nick", nick, "tls", useTLS)
 	conn, err := irc.Dial(server, port, useTLS)
 	if err != nil {
@@ -94,6 +95,7 @@ func (s *Session) Connect(server string, port int, nick string, useTLS bool) err
 	s.mu.Lock()
 	s.conn = conn
 	s.Nick = nick
+	s.nspass = nspass
 	s.mu.Unlock()
 
 	if err := irc.Handshake(conn, nick, nick, "igloo user"); err != nil {
@@ -121,6 +123,12 @@ func (s *Session) ircLoop(lines <-chan string) {
 
 		case "001":
 			logger.L.Info("IRC connected", "session", s.ID, "nick", s.Nick)
+			s.mu.Lock()
+			nspass := s.nspass
+			s.mu.Unlock()
+			if nspass != "" {
+				s.SendIRC("PRIVMSG NickServ :IDENTIFY " + nspass)
+			}
 			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick, "session": s.ID})
 
 		case "PRIVMSG":

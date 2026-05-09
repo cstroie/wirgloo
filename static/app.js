@@ -30,10 +30,11 @@ const userlist      = $('userlist');
 // ── Connect form ─────────────────────────────────────────────────────────────
 connectForm.addEventListener('submit', e => {
   e.preventDefault();
-  const server = $('server').value.trim();
-  const port   = parseInt($('port').value);
-  const nick   = $('nick').value.trim();
-  const tls    = $('tls').checked;
+  const server   = $('server').value.trim();
+  const port     = parseInt($('port').value);
+  const nick     = $('nick').value.trim();
+  const tls      = $('tls').checked;
+  const nspass   = $('nickserv-pass').value;
   if (!server || !nick) return;
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
@@ -42,20 +43,20 @@ connectForm.addEventListener('submit', e => {
   setActive('*server*');
   myNick.textContent = nick;
   appendMsg('*server*', { type: 'connecting', nick: '--', text: `Connecting to ${server}:${port}…` });
-  openWS(server, port, nick, tls);
+  openWS(server, port, nick, tls, nspass);
 });
 
 $('tls').addEventListener('change', function() {
   $('port').value = this.checked ? 6697 : 6667;
 });
 
-function openWS(server, port, nick, tls) {
+function openWS(server, port, nick, tls, nspass) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
   state.ws = ws;
 
   ws.onopen = () => {
-    send({ type: 'connect', server, port, nick, tls });
+    send({ type: 'connect', server, port, nick, tls, nspass });
   };
 
   ws.onmessage = e => {

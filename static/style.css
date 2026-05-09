@@ -73,6 +73,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 }
 .connect-box button[type=submit]:hover { background: var(--accent2); }
 
+.field-optional { color: var(--text-dim); font-size: 0.75em; font-style: italic; text-transform: none; letter-spacing: 0; }
 .error-msg { color: var(--error); font-size: 0.8rem; margin-top: 10px; text-align: center; }
 
 
