@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 )
 
 type Message struct {
@@ -22,12 +23,29 @@ func Dial(server string, port int, useTLS, selfSigned bool) (net.Conn, error) {
 		addr = fmt.Sprintf("%s:%d", server, port)
 	}
 	if useTLS {
-		return tls.Dial("tcp", addr, &tls.Config{
+		conn, err := tls.Dial("tcp", addr, &tls.Config{
 			ServerName:         server,
 			InsecureSkipVerify: selfSigned,
 		})
+		if err != nil {
+			return nil, err
+		}
+		setKeepalive(conn.NetConn())
+		return conn, nil
 	}
-	return net.Dial("tcp", addr)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	setKeepalive(conn)
+	return conn, nil
+}
+
+func setKeepalive(conn net.Conn) {
+	if tc, ok := conn.(*net.TCPConn); ok {
+		tc.SetKeepAlive(true)
+		tc.SetKeepAlivePeriod(30 * time.Second)
+	}
 }
 
 func Handshake(conn net.Conn, nick, user, realname, pass string) error {

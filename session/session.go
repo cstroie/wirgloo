@@ -19,14 +19,15 @@ const wsReconnectWindow = 60 * time.Second
 const bufferMax = 500
 
 type Session struct {
-	ID     string
-	Nick   string
-	mu     sync.Mutex
-	ws     *websocket.Conn
-	buf    [][]byte // messages buffered while WS is detached
-	conn   net.Conn
-	done   chan struct{}
-	nspass string
+	ID       string
+	Nick     string
+	mu       sync.Mutex
+	ws       *websocket.Conn
+	buf      [][]byte // messages buffered while WS is detached
+	conn     net.Conn
+	done     chan struct{}
+	nspass   string
+	lastPong time.Time
 }
 
 type Registry struct {
@@ -117,6 +118,7 @@ func (s *Session) Connect(server string, port int, nick string, useTLS, selfSign
 	lines := make(chan string, 64)
 	go irc.ReadLoop(conn, lines, s.done)
 	go s.ircLoop(lines)
+	go s.pingLoop()
 	return nil
 }
 
@@ -130,6 +132,11 @@ func (s *Session) ircLoop(lines <-chan string) {
 		switch msg.Command {
 		case "PING":
 			s.SendIRC("PONG :" + msg.Trailing)
+
+		case "PONG":
+			s.mu.Lock()
+			s.lastPong = time.Now()
+			s.mu.Unlock()
 
 		case "001":
 			logger.L.Info("IRC connected", "session", s.ID, "nick", s.Nick)
@@ -304,6 +311,35 @@ func (s *Session) sendWS(v any) {
 		return
 	}
 	s.ws.WriteMessage(websocket.TextMessage, data)
+}
+
+const pingInterval = 90 * time.Second
+const pingTimeout  = 60 * time.Second
+
+func (s *Session) pingLoop() {
+	ticker := time.NewTicker(pingInterval)
+	defer ticker.Stop()
+	pingSent := time.Time{}
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-ticker.C:
+			s.mu.Lock()
+			lp := s.lastPong
+			s.mu.Unlock()
+			// if a ping is outstanding and the timeout has elapsed, kill the connection
+			if !pingSent.IsZero() && lp.Before(pingSent) && time.Since(pingSent) > pingTimeout {
+				logger.L.Warn("ping timeout", "session", s.ID)
+				s.Close()
+				return
+			}
+			if err := s.SendIRC("PING :igloo"); err != nil {
+				return
+			}
+			pingSent = time.Now()
+		}
+	}
 }
 
 func (s *Session) Close() {
