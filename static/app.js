@@ -362,7 +362,39 @@ function renderUserlist() {
 
 // ── Input / commands ──────────────────────────────────────────────────────────
 $('send-btn').addEventListener('click', sendInput);
-input.addEventListener('keydown', e => { if (e.key === 'Enter') sendInput(); });
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { sendInput(); tabComplete.reset(); }
+  else if (e.key === 'Tab') { e.preventDefault(); tabComplete.next(); }
+  else if (e.key !== 'Shift') tabComplete.reset();
+});
+
+const tabComplete = (() => {
+  let candidates = [], idx = -1, prefix = '', stub = '';
+
+  return {
+    next() {
+      const ch = state.active && state.channels.get(state.active);
+      if (!ch) return;
+
+      if (candidates.length === 0) {
+        const val   = input.value;
+        const space = val.lastIndexOf(' ');
+        stub        = val.slice(space + 1);
+        prefix      = val.slice(0, space + 1);
+        if (!stub) return;
+        candidates = [...ch.nicks.keys()]
+          .filter(n => n.toLowerCase().startsWith(stub.toLowerCase()))
+          .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        idx = -1;
+      }
+      if (candidates.length === 0) return;
+      idx = (idx + 1) % candidates.length;
+      const suffix = prefix === '' ? ': ' : ' ';
+      input.value  = prefix + candidates[idx] + suffix;
+    },
+    reset() { candidates = []; idx = -1; stub = ''; prefix = ''; },
+  };
+})();
 
 function sendInput() {
   const val = input.value.trim();
