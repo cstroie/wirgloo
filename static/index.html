@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>igloo</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="connect-screen">
+    <div class="connect-box">
+      <h1>igloo</h1>
+      <p class="subtitle">Web IRC Client</p>
+      <form id="connect-form">
+        <div class="field">
+          <label>Server</label>
+          <input type="text" id="server" value="irc.libera.chat" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Port</label>
+            <input type="number" id="port" value="6697" min="1" max="65535">
+          </div>
+          <div class="field toggle-field">
+            <label>TLS</label>
+            <label class="toggle">
+              <input type="checkbox" id="tls" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Nickname</label>
+          <input type="text" id="nick" placeholder="yournick" required>
+        </div>
+        <button type="submit">Connect</button>
+      </form>
+      <div id="connect-error" class="error-msg hidden"></div>
+    </div>
+  </div>
+
+  <div id="chat-screen" class="hidden">
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <span id="my-nick"></span>
+        <button id="nick-btn" title="Change nick">✎</button>
+      </div>
+      <div id="channel-list"></div>
+      <div id="sidebar-footer">
+        <button id="join-btn">+ Join</button>
+        <button id="disconnect-btn">Disconnect</button>
+      </div>
+    </div>
+
+    <div id="main">
+      <div id="topic-bar">
+        <span id="target-name"></span>
+        <span id="topic-text"></span>
+      </div>
+      <div id="messages"></div>
+      <div id="input-bar">
+        <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false">
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+
+    <div id="userlist-panel">
+      <div id="userlist-header">Users</div>
+      <div id="userlist"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
