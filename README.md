@@ -51,6 +51,10 @@ igloo -log-json                # emit logs as JSON instead of text
 
 Then open `http://localhost:6677` in your browser, fill in your IRC server and nick, and connect.
 
+## License
+
+GPL-3.0 — see [LICENSE](LICENSE).
+
 ## Project layout
 
 ```
