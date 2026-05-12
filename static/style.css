@@ -304,6 +304,38 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .user-item:hover .dm-btn { opacity: 1; }
 .dm-btn:hover { color: var(--accent); }
 
+.dm-card {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 12px 16px; gap: 10px;
+}
+.dm-avatar {
+  width: 54px; height: 54px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: bold; color: #fff;
+  opacity: 0.9; flex-shrink: 0;
+}
+.dm-nick {
+  font-weight: bold; font-size: 1rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.dm-actions { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 4px; }
+.dm-action-btn {
+  width: 100%; padding: 6px 10px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-dim); font-family: var(--font-mono); font-size: 0.78rem;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s;
+  text-align: center;
+}
+.dm-action-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-bg); }
+.dm-action-btn.danger:hover { color: var(--error); border-color: var(--error); background: rgba(248,113,113,0.08); }
+.dm-whois {
+  width: 100%; margin-top: 8px;
+  border-top: 1px solid var(--border); padding-top: 10px;
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 0.75rem; color: var(--text-dim); word-break: break-word;
+}
+.dm-whois div { line-height: 1.4; }
+
 /* scrollbars */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

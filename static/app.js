@@ -10,6 +10,8 @@ const state = {
   // Map<target, {messages: [], nicks: Set, unread: number, mention: boolean}>
   channels: new Map(),
   active: null,
+  whoisCache: new Map(), // nick → string[]
+  pendingWhois: null,
 };
 
 let reconnectDelay = 1000;
@@ -299,10 +301,18 @@ function handle(msg) {
       renderUserlist();
       break;
 
-    case 'whois':
+    case 'whois': {
       appendMsg('*server*', { type: 'whois', nick: '', text: msg.text });
       if (state.active !== '*server*') bumpUnread('*server*', false);
+      // feed whois cache for any pending nick
+      if (state.pendingWhois) {
+        const lines = state.whoisCache.get(state.pendingWhois) || [];
+        lines.push(msg.text);
+        state.whoisCache.set(state.pendingWhois, lines);
+        if (isDM(state.active) && state.active === state.pendingWhois) renderUserlist();
+      }
       break;
+    }
 
     case 'motd':
       appendMsg('*server*', { type: 'motd', nick: '', text: msg.text });
@@ -511,13 +521,58 @@ function buildMsgEl(m, target) {
   return el;
 }
 
+function isDM(target) {
+  return !!target && !target.startsWith('#') && target !== '*server*' && target !== '*list*';
+}
+
 function openDM(nick) {
   ensureChannel(nick);
   setActive(nick);
 }
 
 function renderUserlist() {
+  const header = $('userlist-header');
   userlist.innerHTML = '';
+
+  if (isDM(state.active)) {
+    const nick = state.active;
+    const nc   = nickColor(nick);
+    header.textContent = 'User';
+
+    // avatar / nick
+    const card = document.createElement('div');
+    card.className = 'dm-card';
+    card.innerHTML = `
+      <div class="dm-avatar" style="background:${nc || 'var(--accent)'}">
+        ${escHtml(nick[0].toUpperCase())}
+      </div>
+      <div class="dm-nick" style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</div>
+      <div class="dm-actions">
+        <button class="dm-action-btn" id="whois-btn">⊕ Info</button>
+        <button class="dm-action-btn danger" id="close-dm-btn">✕ Close</button>
+      </div>`;
+
+    const lines = state.whoisCache.get(nick);
+    if (lines?.length) {
+      const info = document.createElement('div');
+      info.className = 'dm-whois';
+      info.innerHTML = lines.map(l => `<div>${escHtml(l)}</div>`).join('');
+      card.appendChild(info);
+    }
+
+    card.querySelector('#whois-btn').addEventListener('click', () => {
+      state.whoisCache.delete(nick);
+      state.pendingWhois = nick;
+      send({ type: 'raw', line: `WHOIS ${nick}` });
+    });
+    card.querySelector('#close-dm-btn').addEventListener('click', () => removeChannel(nick));
+
+    userlist.appendChild(card);
+    return;
+  }
+
+  // normal channel — nick list
+  header.textContent = 'Users';
   const ch = state.active && state.channels.get(state.active);
   if (!ch) return;
   const sorted = [...ch.nicks.entries()].sort(([a, pa], [b, pb]) => {
