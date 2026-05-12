@@ -255,7 +255,8 @@ function handle(msg) {
       break;
     }
 
-    case 'connected':
+    case 'connected': {
+      const wasReconnect = state.connectParams && !state.connected;
       state.connected = true;
       state.sessionId = msg.session;
       state.nick = msg.nick;
@@ -263,7 +264,17 @@ function handle(msg) {
       myNick.textContent = msg.nick;
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected as ${msg.nick}` });
       restoreSavedChannels(state.server);
+      // re-join channels that were active before a session_expired reconnect
+      if (wasReconnect) {
+        state.channels.forEach((ch, target) => {
+          if (target.startsWith('#') && !ch.offline) {
+            ch.nicks = new Map(); // clear stale nick list
+            send({ type: 'join', channel: target });
+          }
+        });
+      }
       break;
+    }
 
     case 'resumed':
       state.connected = true;
@@ -471,6 +482,8 @@ function handle(msg) {
       break;
 
     case 'disconnected':
+      // ignore if we're already reconnecting transparently
+      if (!state.connected && state.connectParams) break;
       onDisconnect(msg.text);
       break;
   }
