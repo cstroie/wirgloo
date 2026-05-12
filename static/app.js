@@ -794,6 +794,11 @@ const MIRC_COLORS = [
 
 function applyMarkdown(s) {
   return s
+    .replace(/^(#{1,3}) (.+)$/gm, (_, hashes, text) => {
+      const lvl = hashes.length;
+      const size = lvl === 1 ? '1.2em' : lvl === 2 ? '1.05em' : '0.95em';
+      return `<span class="md-h md-h${lvl}" style="font-size:${size}">${text}</span>`;
+    })
     .replace(/~~(.+?)~~/g,               '<s>$1</s>')
     .replace(/\*\*(.+?)\*\*/g,           '<b>$1</b>')
     .replace(/__(.+?)__/g,               '<b>$1</b>')

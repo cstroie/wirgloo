@@ -347,6 +347,9 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
 }
 
+.md-h { font-weight: bold; color: var(--accent); display: inline; }
+.md-h1 { border-bottom: 1px solid var(--border); }
+
 .msg .text a { color: var(--notice); text-underline-offset: 2px; }
 .msg .text a:hover { opacity: 0.85; }
 .msg .text code {
