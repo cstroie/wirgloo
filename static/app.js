@@ -41,6 +41,9 @@ const NETWORKS = {
   dalnet:   { server: 'irc.dal.net',        port: 6697, tls: true  },
   undernet: { server: 'irc.undernet.org',   port: 6667, tls: false },
   ircnet:   { server: 'open.ircnet.net',    port: 6667, tls: false },
+  geekshed: { server: 'irc.geekshed.net',  port: 6697, tls: true  },
+  radiochat:{ server: 'irc.radiochat.org', port: 6697, tls: true  },
+  sdf:      { server: 'irc.sdf.org',       port: 6697, tls: true  },
 };
 
 // ── Saved profiles ────────────────────────────────────────────────────────────
