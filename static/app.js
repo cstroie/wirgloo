@@ -289,6 +289,11 @@ function handle(msg) {
     case 'message': {
       const target = msg.target.startsWith('#') ? msg.target : msg.from;
       ensureChannel(target);
+      // auto-fetch WHOIS when someone opens a DM with us
+      if (target === msg.from && !state.whoisCache.has(msg.from) && state.pendingWhois !== msg.from) {
+        state.pendingWhois = msg.from;
+        send({ type: 'raw', line: `WHOIS ${msg.from}` });
+      }
       const isMe = msg.text.startsWith('/me ');
       const cls  = isMe ? 'me' : (msg.text.includes(state.nick) ? 'mention' : '');
       appendMsg(target, { type: cls || 'msg', nick: msg.from, text: msg.text, ts: msg.ts });
