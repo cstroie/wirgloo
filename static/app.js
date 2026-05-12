@@ -12,6 +12,7 @@ const state = {
   active: null,
   whoisCache: new Map(), // nick → string[]
   pendingWhois: null,
+  ignored: new Set(),    // client-side ignored nicks
 };
 
 let reconnectDelay = 1000;
@@ -103,7 +104,7 @@ $('delete-profile-btn').addEventListener('click', () => {
   applyNetworkSelection('libera');
 });
 
-// Restore last nick and saved profiles on page load.
+// Restore last nick, saved profiles, and ignore list on page load.
 (function init() {
   const nick = localStorage.getItem('igloo_nick');
   if (nick) $('nick').value = nick;
@@ -116,7 +117,15 @@ $('delete-profile-btn').addEventListener('click', () => {
       applyNetworkSelection(lastNet);
     }
   }
+  try {
+    const ig = JSON.parse(localStorage.getItem('igloo_ignored') || '[]');
+    ig.forEach(n => state.ignored.add(n.toLowerCase()));
+  } catch {}
 })();
+
+function saveIgnored() {
+  localStorage.setItem('igloo_ignored', JSON.stringify([...state.ignored]));
+}
 
 // ── Connect form ─────────────────────────────────────────────────────────────
 connectForm.addEventListener('submit', e => {
@@ -475,6 +484,7 @@ function renderMessages(target) {
 }
 
 function appendMsg(target, m) {
+  if (m.nick && state.ignored.has(m.nick.toLowerCase())) return;
   const ch = state.channels.get(target);
   if (!ch) return;
   ch.messages.push(m);
@@ -688,8 +698,106 @@ function handleCommand(raw) {
     case 'RAW':
       send({ type: 'raw', line: arg });
       break;
+
+    case 'KICK': {
+      const [knick, ...kreason] = arg.split(' ');
+      if (state.active?.startsWith('#') && knick)
+        send({ type: 'raw', line: `KICK ${state.active} ${knick} :${kreason.join(' ') || 'Kicked'}` });
+      break;
+    }
+    case 'BAN': {
+      if (state.active?.startsWith('#') && arg)
+        send({ type: 'raw', line: `MODE ${state.active} +b ${arg}!*@*` });
+      break;
+    }
+    case 'UNBAN': {
+      if (state.active?.startsWith('#') && arg)
+        send({ type: 'raw', line: `MODE ${state.active} -b ${arg}!*@*` });
+      break;
+    }
+    case 'MODE':
+      send({ type: 'raw', line: `MODE ${arg || state.active}` });
+      break;
+    case 'INVITE': {
+      const [inick, ichan] = arg.split(' ');
+      if (inick) send({ type: 'raw', line: `INVITE ${inick} ${ichan || state.active}` });
+      break;
+    }
+    case 'NOTICE': {
+      const [ntarget, ...ntxt] = arg.split(' ');
+      if (ntarget && ntxt.length) {
+        send({ type: 'raw', line: `NOTICE ${ntarget} :${ntxt.join(' ')}` });
+        appendMsg(state.active, { type: 'notice', nick: state.nick, text: `→ ${ntarget}: ${ntxt.join(' ')}`, ts: Date.now() / 1000 });
+      }
+      break;
+    }
+    case 'PING': {
+      const ptarget = arg || state.active;
+      send({ type: 'raw', line: `PRIVMSG ${ptarget} :\x01PING ${Date.now()}\x01` });
+      appendMsg(state.active, { type: 'notice', nick: '--', text: `CTCP PING sent to ${ptarget}`, ts: Date.now() / 1000 });
+      break;
+    }
+    case 'SLAP': {
+      const starget = arg || 'everyone';
+      const line = `/me slaps ${starget} around a bit with a large trout`;
+      send({ type: 'message', target: state.active, text: `\x01ACTION slaps ${starget} around a bit with a large trout\x01` });
+      appendMsg(state.active, { type: 'me', nick: state.nick, text: line, ts: Date.now() / 1000 });
+      break;
+    }
+    case 'CLEAR':
+      if (state.active) {
+        const ch = state.channels.get(state.active);
+        if (ch) { ch.messages = []; renderMessages(state.active); }
+      }
+      break;
+    case 'IGNORE':
+      if (arg) {
+        state.ignored.add(arg.toLowerCase());
+        saveIgnored();
+        appendMsg(state.active, { type: 'system', nick: '--', text: `Now ignoring ${arg}` });
+      } else {
+        const list = [...state.ignored].join(', ');
+        appendMsg(state.active, { type: 'system', nick: '--', text: list ? `Ignored: ${list}` : 'Ignore list is empty' });
+      }
+      break;
+    case 'UNIGNORE':
+      if (arg) {
+        state.ignored.delete(arg.toLowerCase());
+        saveIgnored();
+        appendMsg(state.active, { type: 'system', nick: '--', text: `No longer ignoring ${arg}` });
+      }
+      break;
+    case 'HELP': {
+      const cmds = [
+        '/join <#channel>        — join a channel',
+        '/part [reason]          — leave current channel',
+        '/nick <newnick>         — change nickname',
+        '/msg <nick> [text]      — open DM / send message',
+        '/me <action>            — send action (/me waves)',
+        '/notice <target> <text> — send a NOTICE',
+        '/topic [new topic]      — show or set topic',
+        '/kick <nick> [reason]   — kick from channel',
+        '/ban <nick>             — ban nick!*@* from channel',
+        '/unban <nick>           — remove ban',
+        '/mode [target] <modes>  — set modes',
+        '/invite <nick> [#chan]  — invite user to channel',
+        '/whois <nick>           — show user info',
+        '/ping <nick>            — CTCP ping a user',
+        '/away [message]         — set or clear away status',
+        '/list [filter]          — list channels',
+        '/ignore [nick]          — ignore nick (no arg = list)',
+        '/unignore <nick>        — stop ignoring nick',
+        '/slap <nick>            — the classics never die',
+        '/clear                  — clear message buffer',
+        '/raw <line>             — send raw IRC line',
+        '/help                   — show this list',
+      ];
+      cmds.forEach(t => appendMsg(state.active, { type: 'system', nick: '--', text: t }));
+      break;
+    }
+
     default:
-      appendMsg(state.active, { type: 'error', nick: '!', text: `Unknown command: /${cmd}` });
+      appendMsg(state.active, { type: 'error', nick: '!', text: `Unknown command: /${cmd}  (try /help)` });
   }
 }
 
