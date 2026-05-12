@@ -651,7 +651,20 @@ function renderUserlist() {
       if (w.host)     rows.push(`<div class="wi-row"><span class="wi-key">Host</span><span class="wi-val">${escHtml(w.ident+'@'+w.host)}</span></div>`);
       if (w.server)   rows.push(`<div class="wi-row"><span class="wi-key">Server</span><span class="wi-val">${escHtml(w.server)}${w.location ? ' · '+escHtml(w.location) : ''}</span></div>`);
       if (w.idle)     rows.push(`<div class="wi-row"><span class="wi-key">Idle</span><span class="wi-val">${escHtml(w.idle)}</span></div>`);
-      if (w.channels.length) rows.push(`<div class="wi-row"><span class="wi-key">In</span><span class="wi-val wi-chans">${w.channels.map(c => `<span class="wi-chan">${escHtml(c)}</span>`).join('')}</span></div>`);
+      if (w.channels.length) {
+        const PREFIX_LABEL = { '~': ['owner','~'], '&': ['admin','&'], '@': ['op','@'], '%': ['half-op','%'], '+': ['voice','+'] };
+        const chips = w.channels.map(c => {
+          const m = c.match(/^([~&@%+]+)(.*)/);
+          const prefix = m ? m[1] : '';
+          const chan   = m ? m[2] : c;
+          const prefixHtml = [...prefix].map(p => {
+            const [label, sym] = PREFIX_LABEL[p] || [p, p];
+            return `<span class="chan-prefix chan-prefix-${label}" title="${label}">${sym}</span>`;
+          }).join('');
+          return `<span class="wi-chan">${prefixHtml}<span class="wi-chan-name">${escHtml(chan)}</span></span>`;
+        }).join('');
+        rows.push(`<div class="wi-row"><span class="wi-key">In</span><span class="wi-val wi-chans">${chips}</span></div>`);
+      }
       info.innerHTML = rows.join('');
       card.appendChild(info);
     }

@@ -348,7 +348,14 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .wi-key { color: var(--text-dim); flex-shrink: 0; width: 44px; text-align: right; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.4px; }
 .wi-val { color: var(--text); flex: 1; line-height: 1.4; }
 .wi-chans { display: flex; flex-wrap: wrap; gap: 3px; }
-.wi-chan { background: var(--accent-bg); color: var(--accent); border-radius: 3px; padding: 1px 5px; font-size: 0.7rem; }
+.wi-chan { display: inline-flex; align-items: center; gap: 1px; background: var(--accent-bg); border-radius: 3px; padding: 1px 5px; font-size: 0.7rem; }
+.wi-chan-name { color: var(--accent); }
+.chan-prefix { font-weight: bold; font-size: 0.68rem; }
+.chan-prefix-owner   { color: #f87171; }
+.chan-prefix-admin   { color: #fb923c; }
+.chan-prefix-op      { color: var(--mention); }
+.chan-prefix-half-op { color: #a3e635; }
+.chan-prefix-voice   { color: var(--notice); }
 
 /* scrollbars */
 ::-webkit-scrollbar { width: 6px; }
