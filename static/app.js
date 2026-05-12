@@ -576,8 +576,12 @@ function renderChannelList() {
       (target === state.active ? ' active' : '') +
       (ch.offline ? ' offline' : '') +
       (ch.mention ? ' mention' : ch.unread > 0 ? ' unread' : '');
-    const label = target === '*server*' ? state.server : target;
-    el.innerHTML = `<span>${escHtml(label)}</span>`;
+    let icon, label;
+    if (target === '*server*') { icon = '🖧'; label = state.server; }
+    else if (target === '*list*') { icon = '☰'; label = 'Channel list'; }
+    else if (target.startsWith('#')) { icon = '＃'; label = target.slice(1); }
+    else { icon = '◉'; label = target; } // DM
+    el.innerHTML = `<span class="chan-icon">${icon}</span><span class="chan-label">${escHtml(label)}</span>`;
     if (!ch.offline && ch.unread > 0) {
       el.innerHTML += `<span class="unread-badge">${ch.unread}</span>`;
     } else if (!ch.offline && target !== '*server*') {
