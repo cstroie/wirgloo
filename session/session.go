@@ -25,6 +25,11 @@ const bufferMax         = 500              // maximum IRC messages buffered whil
 const pingInterval      = 90 * time.Second // how often to send a client-initiated PING
 const pingTimeout       = 60 * time.Second // how long to wait for a PONG before closing
 
+const (
+	sendBurst    = 5                      // initial token allowance
+	sendInterval = 333 * time.Millisecond // one new token every ~333 ms (≈ 3/s)
+)
+
 // Session represents one connected browser client and its associated IRC
 // connection. All fields are protected by mu except ID and done (immutable
 // after creation).
@@ -38,6 +43,7 @@ type Session struct {
 	done     chan struct{}
 	nspass   string
 	lastPong time.Time
+	sendQ    chan string // rate-limited outbound line queue
 }
 
 // Registry is a thread-safe map of active sessions keyed by session ID.
@@ -140,11 +146,61 @@ func (s *Session) Connect(server string, port int, nick string, useTLS, selfSign
 		return err
 	}
 
+	s.mu.Lock()
+	s.sendQ = make(chan string, 128)
+	s.mu.Unlock()
+
 	lines := make(chan string, 64)
 	go irc.ReadLoop(conn, lines, s.done)
 	go s.ircLoop(lines)
 	go s.pingLoop()
+	go s.sendLoop(conn)
 	return nil
+}
+
+// sendLoop drains the sendQ with a token-bucket rate limiter so we never
+// flood the server. Burst of sendBurst lines, then one new token every
+// sendInterval. Bypassed for time-critical lines (PONG, PING) which are
+// written directly via writeNow.
+func (s *Session) sendLoop(conn net.Conn) {
+	tokens := sendBurst
+	refill := time.NewTicker(sendInterval)
+	defer refill.Stop()
+	pending := make([]string, 0, 16)
+
+	flush := func() {
+		for tokens > 0 && len(pending) > 0 {
+			irc.WriteLine(conn, pending[0])
+			pending = pending[1:]
+			tokens--
+		}
+	}
+
+	for {
+		select {
+		case <-s.done:
+			return
+		case line := <-s.sendQ:
+			pending = append(pending, line)
+			flush()
+		case <-refill.C:
+			if tokens < sendBurst {
+				tokens++
+			}
+			flush()
+		}
+	}
+}
+
+// writeNow writes a line directly to conn, bypassing the rate limiter.
+// Use only for protocol-level messages (PONG, internal PING, QUIT).
+func (s *Session) writeNow(line string) {
+	s.mu.Lock()
+	conn := s.conn
+	s.mu.Unlock()
+	if conn != nil {
+		irc.WriteLine(conn, line)
+	}
 }
 
 // SendResumed notifies the browser that the WebSocket has been successfully
@@ -161,8 +217,12 @@ func (s *Session) ircLoop(lines <-chan string) {
 	for line := range lines {
 		msg := irc.ParseLine(line)
 		switch msg.Command {
+		case "CAP":
+			// Acknowledge and end capability negotiation immediately.
+			s.writeNow("CAP END")
+
 		case "PING":
-			s.SendIRC("PONG :" + msg.Trailing)
+			s.writeNow("PONG :" + msg.Trailing)
 
 		case "PONG":
 			s.mu.Lock()
@@ -368,16 +428,28 @@ func (s *Session) ircLoop(lines <-chan string) {
 	s.sendWS(map[string]any{"type": "disconnected", "text": "IRC connection closed"})
 }
 
-// SendIRC writes a raw IRC line to the server. Returns an error if the IRC
-// connection has not been established yet.
+// SendIRC queues a raw IRC line through the rate limiter. Returns an error
+// if the session has no active IRC connection.
 func (s *Session) SendIRC(line string) error {
 	s.mu.Lock()
-	conn := s.conn
+	q := s.sendQ
 	s.mu.Unlock()
-	if conn == nil {
+	if q == nil {
 		return fmt.Errorf("not connected")
 	}
-	return irc.WriteLine(conn, line)
+	select {
+	case q <- line:
+	default:
+		logger.L.Warn("send queue full, dropping line", "session", s.ID, "line", line)
+	}
+	return nil
+}
+
+// Quit sends a QUIT message immediately (bypassing the rate limiter) and
+// closes the IRC connection.
+func (s *Session) Quit(reason string) {
+	s.writeNow("QUIT :" + reason)
+	s.Close()
 }
 
 // sendWS serialises v as JSON and writes it to the WebSocket. If the
@@ -420,9 +492,7 @@ func (s *Session) pingLoop() {
 				s.Close()
 				return
 			}
-			if err := s.SendIRC("PING :igloo"); err != nil {
-				return
-			}
+			s.writeNow("PING :igloo")
 			pingSent = time.Now()
 		}
 	}

@@ -109,6 +109,12 @@ func dispatch(s *session.Session, msg inMsg) error {
 			}
 		}
 		return s.Connect(msg.Server, msg.Port, msg.Nick, msg.TLS, msg.SelfSigned, msg.Pass, msg.NSPass)
+	case "disconnect":
+		reason := msg.Text
+		if reason == "" {
+			reason = "Leaving"
+		}
+		s.Quit(reason)
 	case "join":
 		return s.SendIRC("JOIN " + msg.Channel)
 	case "part":

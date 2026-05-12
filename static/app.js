@@ -706,9 +706,8 @@ $('nick-btn').addEventListener('click', () => {
 
 $('disconnect-btn').addEventListener('click', () => {
   state.sessionId = null;
-  send({ type: 'raw', line: 'QUIT :bye' });
-  state.ws?.close();
-  onDisconnect('Disconnected');
+  send({ type: 'disconnect', text: 'Leaving' });
+  setTimeout(() => { state.ws?.close(); onDisconnect('Disconnected'); }, 300);
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
