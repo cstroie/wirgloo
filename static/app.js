@@ -4,6 +4,7 @@
 const state = {
   ws: null,
   nick: '',
+  server: '',
   connected: false,
   sessionId: null,
   // Map<target, {messages: [], nicks: Set, unread: number, mention: boolean}>
@@ -38,6 +39,7 @@ connectForm.addEventListener('submit', e => {
   const pass       = $('pass').value;
   const nspass   = $('nickserv-pass').value;
   if (!server || !nick) return;
+  state.server = server;
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
   chatScreen.classList.remove('hidden');
@@ -277,7 +279,7 @@ function setActive(target) {
   renderChannelList();
   renderMessages(target);
   renderUserlist();
-  targetName.textContent = target;
+  targetName.textContent = target === '*server*' ? state.server : target;
   topicText.textContent = ch.topic || '';
   input.focus();
 }
@@ -298,7 +300,8 @@ function renderChannelList() {
     el.className = 'chan-item' +
       (target === state.active ? ' active' : '') +
       (ch.mention ? ' mention' : ch.unread > 0 ? ' unread' : '');
-    el.innerHTML = `<span>${escHtml(target)}</span>`;
+    const label = target === '*server*' ? state.server : target;
+    el.innerHTML = `<span>${escHtml(label)}</span>`;
     if (ch.unread > 0) {
       el.innerHTML += `<span class="unread-badge">${ch.unread}</span>`;
     } else if (target !== '*server*') {
