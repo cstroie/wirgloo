@@ -281,7 +281,13 @@ function setActive(target) {
   renderUserlist();
   targetName.textContent = target === '*server*' ? state.server : target;
   topicText.textContent = ch.topic || '';
+  updateTitle();
   input.focus();
+}
+
+function updateTitle() {
+  const label = state.active === '*server*' ? state.server : state.active;
+  document.title = label ? `${label} — igloo` : 'igloo';
 }
 
 function bumpUnread(target, mention) {
@@ -539,6 +545,7 @@ function onDisconnect(reason) {
   state.sessionId = null;
   state.channels.clear();
   state.active = null;
+  document.title = 'igloo';
   chatScreen.classList.add('hidden');
   connectScreen.classList.remove('hidden');
   showConnectError(reason);
