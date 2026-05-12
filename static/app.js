@@ -714,9 +714,10 @@ function renderUserlist() {
   }
 
   // normal channel — nick list
-  header.textContent = 'Users';
   const ch = state.active && state.channels.get(state.active);
   if (!ch) return;
+  const count = ch.nicks.size;
+  header.textContent = count ? `${count} Users` : 'Users';
   const prefixRank = {'~':0,'&':1,'@':2,'%':3,'+':4};
   const prefixClass = {'~':'owner','&':'admin','@':'op','%':'halfop','+':'voice'};
   const sorted = [...ch.nicks.entries()].sort(([a, pa], [b, pb]) => {
