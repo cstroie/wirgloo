@@ -139,6 +139,28 @@ function saveIgnored() {
   localStorage.setItem('igloo_ignored', JSON.stringify([...state.ignored]));
 }
 
+// ── Saved channel list ────────────────────────────────────────────────────────
+function channelsKey(server) { return `igloo_channels_${server}`; }
+
+function loadSavedChannels(server) {
+  try { return JSON.parse(localStorage.getItem(channelsKey(server)) || '[]'); }
+  catch { return []; }
+}
+
+function saveChannels(server) {
+  const active = [...state.channels.keys()].filter(t => t.startsWith('#') && !state.channels.get(t).offline);
+  localStorage.setItem(channelsKey(server), JSON.stringify(active));
+}
+
+function restoreSavedChannels(server) {
+  loadSavedChannels(server).forEach(ch => {
+    if (!state.channels.has(ch)) {
+      state.channels.set(ch, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', offline: true });
+    }
+  });
+  renderChannelList();
+}
+
 // ── Connect form ─────────────────────────────────────────────────────────────
 connectForm.addEventListener('submit', e => {
   e.preventDefault();
@@ -212,6 +234,7 @@ function handle(msg) {
       reconnectDelay = 1000;
       myNick.textContent = msg.nick;
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected as ${msg.nick}` });
+      restoreSavedChannels(state.server);
       break;
 
     case 'resumed':
@@ -261,7 +284,10 @@ function handle(msg) {
     case 'join':
       if (msg.nick === state.nick) {
         ensureChannel(msg.channel);
+        const joiningCh = state.channels.get(msg.channel);
+        if (joiningCh) joiningCh.offline = false;
         setActive(msg.channel);
+        saveChannels(state.server);
       } else {
         ensureChannel(msg.channel);
         state.channels.get(msg.channel)?.nicks.set(msg.nick, '');
@@ -273,6 +299,7 @@ function handle(msg) {
     case 'part':
       if (msg.nick === state.nick) {
         removeChannel(msg.channel);
+        saveChannels(state.server);
       } else {
         state.channels.get(msg.channel)?.nicks.delete(msg.nick);        renderUserlist();
         appendMsg(msg.channel, { type: 'part', nick: '', text: `← ${msg.nick} left ${msg.channel}` });
@@ -525,22 +552,35 @@ function renderChannelList() {
     const el = document.createElement('div');
     el.className = 'chan-item' +
       (target === state.active ? ' active' : '') +
+      (ch.offline ? ' offline' : '') +
       (ch.mention ? ' mention' : ch.unread > 0 ? ' unread' : '');
     const label = target === '*server*' ? state.server : target;
     el.innerHTML = `<span>${escHtml(label)}</span>`;
-    if (ch.unread > 0) {
+    if (!ch.offline && ch.unread > 0) {
       el.innerHTML += `<span class="unread-badge">${ch.unread}</span>`;
-    } else if (target !== '*server*') {
+    } else if (!ch.offline && target !== '*server*') {
+      el.innerHTML += `<button class="close-btn" data-target="${escHtml(target)}">×</button>`;
+    } else if (ch.offline) {
       el.innerHTML += `<button class="close-btn" data-target="${escHtml(target)}">×</button>`;
     }
     el.addEventListener('click', ev => {
       if (ev.target.classList.contains('close-btn')) {
         const t = ev.target.dataset.target;
-        if (t.startsWith('#')) send({ type: 'part', channel: t });
-        else removeChannel(t);
+        if (ch.offline) {
+          removeChannel(t);
+          saveChannels(state.server);
+        } else if (t.startsWith('#')) {
+          send({ type: 'part', channel: t });
+        } else {
+          removeChannel(t);
+        }
         return;
       }
-      setActive(target);
+      if (ch.offline) {
+        send({ type: 'join', channel: target });
+      } else {
+        setActive(target);
+      }
     });
     channelList.appendChild(el);
   });
