@@ -59,12 +59,14 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .field label { color: var(--text-head); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
-.field input[type=text], .field input[type=number], .field input[type=password] {
+.field input[type=text], .field input[type=number], .field input[type=password],
+.field select {
   background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
   color: var(--text); padding: 8px 12px; font-family: var(--font-mono); font-size: 0.9rem;
-  outline: none; transition: border-color 0.15s;
+  outline: none; transition: border-color 0.15s; width: 100%;
 }
-.field input:focus { border-color: var(--accent); }
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field select { cursor: pointer; }
 
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }

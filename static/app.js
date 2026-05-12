@@ -28,6 +28,31 @@ const topicText     = $('topic-text');
 const input         = $('input');
 const userlist      = $('userlist');
 
+// ── Network presets ───────────────────────────────────────────────────────────
+const NETWORKS = {
+  libera:   { server: 'irc.libera.chat',    port: 6697, tls: true  },
+  oftc:     { server: 'irc.oftc.net',       port: 6697, tls: true  },
+  rizon:    { server: 'irc.rizon.net',      port: 6697, tls: true  },
+  efnet:    { server: 'irc.efnet.org',      port: 6667, tls: false },
+  quakenet: { server: 'irc.quakenet.org',   port: 6667, tls: false },
+  dalnet:   { server: 'irc.dal.net',        port: 6697, tls: true  },
+  undernet: { server: 'irc.undernet.org',   port: 6667, tls: false },
+  ircnet:   { server: 'open.ircnet.net',    port: 6667, tls: false },
+};
+
+$('network').addEventListener('change', function () {
+  const net = NETWORKS[this.value];
+  const isCustom = !net;
+  $('server-field').classList.toggle('hidden', !isCustom);
+  $('server').required = isCustom;
+  if (net) {
+    $('server').value = net.server;
+    $('port').value   = net.port;
+    $('tls').checked  = net.tls;
+    $('tls').dispatchEvent(new Event('change'));
+  }
+});
+
 // ── Connect form ─────────────────────────────────────────────────────────────
 connectForm.addEventListener('submit', e => {
   e.preventDefault();

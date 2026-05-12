@@ -16,8 +16,22 @@
       <p class="subtitle">Web IRC Client</p>
       <form id="connect-form">
         <div class="field">
+          <label>Network</label>
+          <select id="network">
+            <option value="libera">Libera.Chat</option>
+            <option value="oftc">OFTC</option>
+            <option value="rizon">Rizon</option>
+            <option value="efnet">EFnet</option>
+            <option value="quakenet">QuakeNet</option>
+            <option value="dalnet">DALnet</option>
+            <option value="undernet">Undernet</option>
+            <option value="ircnet">IRCnet</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </div>
+        <div class="field hidden" id="server-field">
           <label>Server</label>
-          <input type="text" id="server" value="irc.libera.chat" required>
+          <input type="text" id="server" value="irc.libera.chat">
         </div>
         <div class="field-row">
           <div class="field">
