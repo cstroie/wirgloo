@@ -14,7 +14,7 @@
   --part:      #f87171;
   --notice:    #60a5fa;
   --me:        #c084fc;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-mono: 'VT323', 'JetBrains Mono', 'Fira Code', monospace;
   --radius:    6px;
   --sidebar-w: 200px;
   --users-w:   160px;
@@ -42,7 +42,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body { height: 100%; font-family: var(--font-mono); background: var(--bg); color: var(--text); font-size: 14px; }
+html, body { height: 100%; font-family: var(--font-mono); background: var(--bg); color: var(--text); font-size: 18px; }
 
 /* ── Connect screen ─────────────────────────────────── */
 #connect-screen {
