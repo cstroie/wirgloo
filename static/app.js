@@ -263,6 +263,7 @@ function handle(msg) {
       reconnectDelay = 1000;
       myNick.textContent = msg.nick;
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected as ${msg.nick}` });
+      requestNotifyPermission();
       restoreSavedChannels(state.server);
       // re-join channels that were active before a session_expired reconnect
       if (wasReconnect) {
@@ -322,9 +323,10 @@ function handle(msg) {
         send({ type: 'raw', line: `WHOIS ${msg.from}` });
       }
       const isMe = msg.text.startsWith('/me ');
-      const cls  = isMe ? 'me' : (msg.text.includes(state.nick) ? 'mention' : '');
+      const isMention = !isMe && (target === msg.from || msg.text.includes(state.nick));
+      const cls  = isMe ? 'me' : (isMention ? 'mention' : '');
       appendMsg(target, { type: cls || 'msg', nick: msg.from, text: msg.text, ts: msg.ts });
-      if (target !== state.active) bumpUnread(target, cls === 'mention');
+      if (target !== state.active) bumpUnread(target, isMention, msg.from, msg.text);
       break;
     }
 
@@ -594,12 +596,33 @@ function updateTitle() {
   document.title = label ? `${label} — wirgloo` : 'wirgloo';
 }
 
-function bumpUnread(target, mention) {
+function bumpUnread(target, mention, fromNick, text) {
   const ch = state.channels.get(target);
   if (!ch) return;
   ch.unread++;
   if (mention) ch.mention = true;
   renderChannelList();
+  if (mention && fromNick && text) notify(target, fromNick, text);
+}
+
+// ── Browser notifications ─────────────────────────────────────────────────────
+function requestNotifyPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function notify(target, fromNick, text) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (document.visibilityState === 'visible') return; // tab is focused
+  const label = target === fromNick ? fromNick : `${fromNick} in ${target}`;
+  const n = new Notification(`wirgloo — ${label}`, {
+    body: text.replace(/\x02|\x1D|\x1F|\x0F|\x16|\x11/g, '').replace(/\x03\d{0,2}(,\d{0,2})?/g, '').slice(0, 120),
+    tag:  target, // collapse multiple notifications per target
+    icon: '/favicon.ico',
+  });
+  n.onclick = () => { window.focus(); setActive(target); n.close(); };
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
