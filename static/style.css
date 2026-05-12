@@ -333,6 +333,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   font-size: 0.68rem; padding: 2px 7px; border-radius: 10px;
   border: 1px solid; white-space: nowrap;
 }
+.badge-away       { color: var(--text-dim); border-color: var(--text-dim); background: rgba(107,114,128,0.15); }
 .badge-secure     { color: var(--join);    border-color: var(--join);    background: rgba(52,211,153,0.1); }
 .badge-identified { color: var(--notice);  border-color: var(--notice);  background: rgba(96,165,250,0.1); }
 .badge-ircop      { color: var(--mention); border-color: var(--mention); background: rgba(245,158,11,0.1); }
@@ -348,6 +349,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .wi-key { color: var(--text-dim); flex-shrink: 0; width: 44px; text-align: right; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.4px; }
 .wi-val { color: var(--text); flex: 1; line-height: 1.4; }
 .wi-chans { display: flex; flex-wrap: wrap; gap: 3px; }
+.wi-away { color: var(--text-dim); font-style: italic; }
 .wi-chan { display: inline-flex; align-items: center; gap: 1px; background: var(--accent-bg); border-radius: 3px; padding: 1px 5px; font-size: 0.7rem; }
 .wi-chan-name { color: var(--accent); }
 .chan-prefix { font-weight: bold; font-size: 0.68rem; }

@@ -588,7 +588,8 @@ function openDM(nick) {
 
 function parseWhois(lines) {
   const w = { realname:'', host:'', ident:'', server:'', location:'', idle:'',
-               account:'', channels:[], secure:false, ircop:false, bot:false };
+               account:'', channels:[], secure:false, ircop:false, bot:false,
+               away:false, awayMsg:'' };
   for (const l of lines) {
     let m;
     if ((m = l.match(/^\S+ \((.+?)@(.+?)\): (.+)/)))
@@ -601,11 +602,11 @@ function parseWhois(lines) {
       w.idle = m[1];
     else if ((m = l.match(/logged in as (\S+)/)))
       w.account = m[1];
+    else if ((m = l.match(/^away: (.+)/)))
+      { w.away = true; w.awayMsg = m[1]; }
     else if (l.includes('secure connection'))  w.secure = true;
     else if (l.includes('IRC operator'))       w.ircop  = true;
   }
-  // Bot heuristic: ident starts with ~ (no identd) combined with nick ending in bot/serv/chanserv etc,
-  // OR if realname/nick contains 'bot' (case-insensitive)
   w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
   return w;
 }
@@ -627,10 +628,11 @@ function renderUserlist() {
 
     // badges
     const badges = [];
-    if (w?.secure) badges.push('<span class="user-badge badge-secure" title="Secure connection">🔒 Secure</span>');
-    if (w?.ircop)  badges.push('<span class="user-badge badge-ircop"  title="IRC Operator">⚡ IRCop</span>');
+    if (w?.away)    badges.push(`<span class="user-badge badge-away" title="${escHtml(w.awayMsg || 'Away')}">⏾ Away</span>`);
+    if (w?.secure)  badges.push('<span class="user-badge badge-secure" title="Secure connection">🔒 Secure</span>');
+    if (w?.ircop)   badges.push('<span class="user-badge badge-ircop"  title="IRC Operator">⚡ IRCop</span>');
     if (w?.account) badges.push(`<span class="user-badge badge-identified" title="Identified as ${escHtml(w.account)}">✓ ${escHtml(w.account)}</span>`);
-    if (w?.bot)    badges.push('<span class="user-badge badge-bot"    title="Likely a bot">🤖 Bot</span>');
+    if (w?.bot)     badges.push('<span class="user-badge badge-bot"    title="Likely a bot">🤖 Bot</span>');
 
     card.innerHTML = `
       <div class="dm-avatar" style="background:${nc || 'var(--accent)'}">
@@ -647,6 +649,7 @@ function renderUserlist() {
       const info = document.createElement('div');
       info.className = 'dm-whois';
       const rows = [];
+      if (w.away && w.awayMsg) rows.push(`<div class="wi-row"><span class="wi-key">Away</span><span class="wi-val wi-away">${escHtml(w.awayMsg)}</span></div>`);
       if (w.realname) rows.push(`<div class="wi-row"><span class="wi-key">Name</span><span class="wi-val">${escHtml(w.realname)}</span></div>`);
       if (w.host)     rows.push(`<div class="wi-row"><span class="wi-key">Host</span><span class="wi-val">${escHtml(w.ident+'@'+w.host)}</span></div>`);
       if (w.server)   rows.push(`<div class="wi-row"><span class="wi-key">Server</span><span class="wi-val">${escHtml(w.server)}${w.location ? ' · '+escHtml(w.location) : ''}</span></div>`);
