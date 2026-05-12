@@ -348,10 +348,36 @@ function handle(msg) {
   }
 }
 
+// ── Chat log persistence ──────────────────────────────────────────────────────
+const LOG_MAX   = 200;
+const LOG_TYPES = new Set(['msg', 'me', 'notice', 'join', 'part', 'quit', 'system']);
+
+function logKey(server, target) {
+  return `igloo_log:${server}:${target}`;
+}
+
+function persistMsg(target, m) {
+  if (!LOG_TYPES.has(m.type)) return;
+  const key = logKey(state.server, target);
+  let log;
+  try { log = JSON.parse(localStorage.getItem(key) || '[]'); } catch { log = []; }
+  log.push(m);
+  if (log.length > LOG_MAX) log.splice(0, log.length - LOG_MAX);
+  try { localStorage.setItem(key, JSON.stringify(log)); } catch {}
+}
+
+function loadLog(server, target) {
+  try { return JSON.parse(localStorage.getItem(logKey(server, target)) || '[]'); } catch { return []; }
+}
+
 // ── Channels ──────────────────────────────────────────────────────────────────
 function ensureChannel(target) {
   if (!state.channels.has(target)) {
-    state.channels.set(target, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '' });
+    const history = loadLog(state.server, target);
+    const messages = history.length
+      ? [...history, { type: 'session-break', nick: '', text: '', ts: null }]
+      : [];
+    state.channels.set(target, { messages, nicks: new Map(), unread: 0, mention: false, topic: '' });
     renderChannelList();
   }
 }
@@ -434,6 +460,7 @@ function appendMsg(target, m) {
   if (!ch) return;
   ch.messages.push(m);
   if (ch.messages.length > 2000) ch.messages.shift();
+  persistMsg(target, m);
   if (target === state.active) {
     const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 60;
     messages.appendChild(buildMsgEl(m, target));
@@ -446,6 +473,12 @@ function buildMsgEl(m, target) {
   const cls = m.type || 'msg';
   el.className = `msg ${cls}`;
   const ts = m.ts ? fmtTime(m.ts) : fmtTime(Date.now() / 1000);
+
+  if (cls === 'session-break') {
+    el.className = 'session-break';
+    el.textContent = '── previous session ──';
+    return el;
+  }
 
   if (cls === 'list') {
     const [chan, ...rest] = m.text.split('  ');
