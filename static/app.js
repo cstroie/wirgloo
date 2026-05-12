@@ -113,6 +113,8 @@ $('delete-profile-btn').addEventListener('click', () => {
 (function init() {
   const nick = localStorage.getItem('igloo_nick');
   if (nick) $('nick').value = nick;
+  const rn = localStorage.getItem('igloo_realname');
+  if (rn) $('realname').value = rn;
   renderSavedProfiles();
   const lastNet = localStorage.getItem('igloo_last_network');
   if (lastNet) {
@@ -141,9 +143,11 @@ connectForm.addEventListener('submit', e => {
   const tls        = $('tls').checked;
   const selfsigned = $('selfsigned').checked;
   const pass       = $('pass').value;
-  const nspass   = $('nickserv-pass').value;
+  const nspass     = $('nickserv-pass').value;
+  const realname   = $('realname').value.trim() || nick;
   if (!server || !nick) return;
   localStorage.setItem('igloo_nick', nick);
+  if ($('realname').value.trim()) localStorage.setItem('igloo_realname', $('realname').value.trim());
   const netVal = $('network').value;
   localStorage.setItem('igloo_last_network', netVal);
   if (netVal === 'custom' || netVal.startsWith('saved:')) {
@@ -158,7 +162,7 @@ connectForm.addEventListener('submit', e => {
   setActive('*server*');
   myNick.textContent = nick;
   appendMsg('*server*', { type: 'connecting', nick: '--', text: `Connecting to ${server}:${port}…` });
-  openWS(server, port, nick, tls, selfsigned, pass, nspass);
+  openWS(server, port, nick, realname, tls, selfsigned, pass, nspass);
 });
 
 $('tls').addEventListener('change', function() {
@@ -167,13 +171,13 @@ $('tls').addEventListener('change', function() {
   if (!this.checked) $('selfsigned').checked = false;
 });
 
-function openWS(server, port, nick, tls, selfsigned, pass, nspass) {
+function openWS(server, port, nick, realname, tls, selfsigned, pass, nspass) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
   state.ws = ws;
 
   ws.onopen = () => {
-    send({ type: 'connect', server, port, nick, tls, selfsigned, pass, nspass });
+    send({ type: 'connect', server, port, nick, realname, tls, selfsigned, pass, nspass });
   };
 
   ws.onmessage = e => {

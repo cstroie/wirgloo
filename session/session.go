@@ -125,7 +125,10 @@ func (r *Registry) Remove(id string) {
 // after receiving the welcome numeric (001); pass is the server PASS sent
 // during the handshake. Connect returns once the TCP connection and handshake
 // succeed; the 001 numeric arrives asynchronously via ircLoop.
-func (s *Session) Connect(server string, port int, nick string, useTLS, selfSigned bool, pass, nspass string) error {
+func (s *Session) Connect(server string, port int, nick, realname string, useTLS, selfSigned bool, pass, nspass string) error {
+	if realname == "" {
+		realname = nick
+	}
 	logger.L.Info("connecting to IRC", "session", s.ID, "server", server, "port", port, "nick", nick, "tls", useTLS, "selfsigned", selfSigned)
 	conn, err := irc.Dial(server, port, useTLS, selfSigned)
 	if err != nil {
@@ -139,7 +142,7 @@ func (s *Session) Connect(server string, port int, nick string, useTLS, selfSign
 	s.nspass = nspass
 	s.mu.Unlock()
 
-	if err := irc.Handshake(conn, nick, nick, "igloo user", pass); err != nil {
+	if err := irc.Handshake(conn, nick, nick, realname, pass); err != nil {
 		conn.Close()
 		logger.L.Error("IRC handshake failed", "session", s.ID, "err", err)
 		s.sendWS(map[string]any{"type": "connect_error", "text": err.Error()})
