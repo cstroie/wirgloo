@@ -597,7 +597,7 @@ function buildMsgEl(m, target) {
     <span class="ts">${ts}</span>
     <span class="body">
       <span class="nick-col ${self ? 'self' : ''}" style="${nc ? `color:${nc}` : ''}">${escHtml(m.nick || '')}</span>
-      <span class="text">${renderText(m.text)}</span>
+      <span class="text">${highlightNicks(renderText(m.text), state.channels.get(state.active)?.nicks)}</span>
     </span>`;
   return el;
 }
@@ -1034,6 +1034,27 @@ function escHtml(s) {
 
 function linkify(s) {
   return s.replace(/(https?:\/\/[^\s<>"]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+// Replace nick mentions in an HTML string with colored spans.
+// Skips content inside HTML tags to avoid corrupting attributes.
+function highlightNicks(html, nicks) {
+  if (!nicks || !nicks.size) return html;
+  // build alternation of escaped nick names, longest first to avoid partial matches
+  const escaped = [...nicks.keys()]
+    .filter(n => n !== state.nick)
+    .sort((a, b) => b.length - a.length)
+    .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (!escaped.length) return html;
+  const re = new RegExp(`(?<=^|[\\s,;:!?])(?:${escaped.join('|')})(?=[\\s,;:!?]|$|:)`, 'g');
+  // walk the html splitting on tags, only transform text nodes
+  return html.replace(/(<[^>]+>)|([^<]+)/g, (_, tag, text) => {
+    if (tag) return tag;
+    return text.replace(re, m => {
+      const c = nickColor(m);
+      return `<span class="nick-mention" style="${c ? `color:${c}` : ''}">${m}</span>`;
+    });
+  });
 }
 
 // IRC mIRC color palette (indices 0-15)
