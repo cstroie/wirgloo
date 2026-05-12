@@ -40,8 +40,39 @@ const NETWORKS = {
   ircnet:   { server: 'open.ircnet.net',    port: 6667, tls: false },
 };
 
-$('network').addEventListener('change', function () {
-  const net = NETWORKS[this.value];
+// ── Saved profiles ────────────────────────────────────────────────────────────
+function loadProfiles() {
+  try { return JSON.parse(localStorage.getItem('igloo_profiles') || '[]'); }
+  catch { return []; }
+}
+
+function saveProfile(profile) {
+  const profiles = loadProfiles().filter(p => p.server !== profile.server || p.port !== profile.port);
+  profiles.unshift(profile);
+  localStorage.setItem('igloo_profiles', JSON.stringify(profiles));
+}
+
+function profileKey(p) { return `saved:${p.server}:${p.port}`; }
+
+function renderSavedProfiles() {
+  const sel = $('network');
+  const existing = sel.querySelector('optgroup[label="Saved"]');
+  if (existing) existing.remove();
+  const profiles = loadProfiles();
+  if (!profiles.length) return;
+  const group = document.createElement('optgroup');
+  group.label = 'Saved';
+  profiles.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = profileKey(p);
+    opt.textContent = `${p.server}:${p.port}${p.tls ? ' (TLS)' : ''}`;
+    group.appendChild(opt);
+  });
+  sel.insertBefore(group, sel.querySelector('option[value="custom"]'));
+}
+
+function applyNetworkSelection(value) {
+  const net = NETWORKS[value] ?? loadProfiles().find(p => profileKey(p) === value);
   const isCustom = !net;
   $('server-field').classList.toggle('hidden', !isCustom);
   $('server').required = isCustom;
@@ -50,8 +81,18 @@ $('network').addEventListener('change', function () {
     $('port').value   = net.port;
     $('tls').checked  = net.tls;
     $('tls').dispatchEvent(new Event('change'));
+    if (net.nick) $('nick').value = net.nick;
   }
-});
+}
+
+$('network').addEventListener('change', function () { applyNetworkSelection(this.value); });
+
+// Restore last nick and saved profiles on page load.
+(function init() {
+  const nick = localStorage.getItem('igloo_nick');
+  if (nick) $('nick').value = nick;
+  renderSavedProfiles();
+})();
 
 // ── Connect form ─────────────────────────────────────────────────────────────
 connectForm.addEventListener('submit', e => {
@@ -64,6 +105,12 @@ connectForm.addEventListener('submit', e => {
   const pass       = $('pass').value;
   const nspass   = $('nickserv-pass').value;
   if (!server || !nick) return;
+  localStorage.setItem('igloo_nick', nick);
+  const netVal = $('network').value;
+  if (netVal === 'custom' || netVal.startsWith('saved:')) {
+    saveProfile({ server, port, tls, nick });
+    renderSavedProfiles();
+  }
   state.server = server;
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
