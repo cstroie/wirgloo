@@ -804,7 +804,10 @@ function renderUserlist() {
     const el = document.createElement('div');
     el.className = 'user-item' + (cls ? ' ' + cls : '');
     const nc = nickColor(nick);
-    el.innerHTML = `<span class="user-nick" style="${nc ? `color:${nc}` : ''}">${escHtml((topChar || ' ') + nick)}</span>` +
+    const prefixHtml = topChar
+      ? `<span class="user-prefix">${escHtml(topChar)}</span>`
+      : `<span class="user-prefix-none"> </span>`;
+    el.innerHTML = `<span class="user-nick">${prefixHtml}<span style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</span></span>` +
       (nick !== state.nick ? `<button class="dm-btn" title="Message ${escHtml(nick)}">✉</button>` : '');
     el.querySelector('.dm-btn')?.addEventListener('click', e => {
       e.stopPropagation();
