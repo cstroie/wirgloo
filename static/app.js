@@ -724,7 +724,8 @@ function buildMsgEl(m, target) {
     el.innerHTML = `
       <span class="ts">${ts}</span>
       <span class="body">
-        <span class="action-text" style="${nc ? `color:${nc}` : ''}">* <b>${escHtml(m.nick || '')}</b> ${highlightNicks(renderText(action), state.channels.get(state.active)?.nicks)}</span>
+        <span class="nick-col action-star" style="${nc ? `color:${nc}` : ''}">*</span>
+        <span class="action-text" style="${nc ? `color:${nc}` : ''}"><b>${escHtml(m.nick || '')}</b> ${highlightNicks(renderText(action), state.channels.get(state.active)?.nicks)}</span>
       </span>`;
     return el;
   }

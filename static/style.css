@@ -248,8 +248,8 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .nick-mention { font-weight: bold; }
 
 .msg.mention { background: rgba(245,158,11,0.07); border-radius: 6px; }
-.msg.action .body { display: block; }
-.msg.action .action-text { font-style: italic; }
+.msg.action .action-star { text-align: right; }
+.msg.action .action-text { flex: 1; min-width: 0; font-style: italic; white-space: pre-wrap; }
 .msg.mention .text { color: var(--mention); }
 .msg.system .nick-col { color: var(--text-dim); }
 .msg.system .text { color: var(--text-dim); font-style: italic; }
