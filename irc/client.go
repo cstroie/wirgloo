@@ -13,11 +13,12 @@ import (
 
 // Message is a parsed IRC protocol line.
 type Message struct {
-	Prefix   string   // raw prefix, e.g. "nick!user@host" or "server"
-	Nick     string   // nick extracted from Prefix; equals Prefix for server messages
-	Command  string   // e.g. "PRIVMSG", "001", "PING"
-	Params   []string // all parameters including the trailing one
-	Trailing string   // text after the " :" separator
+	Tags     map[string]string // IRCv3 message tags, nil if none
+	Prefix   string            // raw prefix, e.g. "nick!user@host" or "server"
+	Nick     string            // nick extracted from Prefix; equals Prefix for server messages
+	Command  string            // e.g. "PRIVMSG", "001", "PING"
+	Params   []string          // all parameters including the trailing one
+	Trailing string            // text after the " :" separator
 }
 
 // Dial opens a TCP connection to server:port. When useTLS is true the
@@ -108,6 +109,16 @@ func ReadLoop(conn net.Conn, out chan<- string, done <-chan struct{}) {
 // always index Params without special-casing the trailing field.
 func ParseLine(line string) Message {
 	msg := Message{}
+	// IRCv3 message tags: @key=value;key2=value2 ...
+	if strings.HasPrefix(line, "@") {
+		parts := strings.SplitN(line, " ", 2)
+		msg.Tags = parseTags(parts[0][1:])
+		if len(parts) > 1 {
+			line = parts[1]
+		} else {
+			line = ""
+		}
+	}
 	if strings.HasPrefix(line, ":") {
 		parts := strings.SplitN(line, " ", 2)
 		msg.Prefix = strings.TrimPrefix(parts[0], ":")
@@ -133,6 +144,19 @@ func ParseLine(line string) Message {
 		msg.Params = append(msg.Params, msg.Trailing)
 	}
 	return msg
+}
+
+// parseTags parses an IRCv3 tag string into a map.
+func parseTags(s string) map[string]string {
+	tags := make(map[string]string)
+	for _, pair := range strings.Split(s, ";") {
+		if pair == "" {
+			continue
+		}
+		k, v, _ := strings.Cut(pair, "=")
+		tags[k] = v
+	}
+	return tags
 }
 
 // containsColon reports whether s contains a colon, used to detect IPv6

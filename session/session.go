@@ -148,12 +148,12 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 
 	serverPass := ""
 	// Always request multi-prefix; add sasl if that auth method is chosen.
-	capReq := "multi-prefix away-notify"
+	capReq := "multi-prefix away-notify server-time"
 	switch authMethod {
 	case "server":
 		serverPass = pass
 	case "sasl":
-		capReq = "multi-prefix away-notify sasl"
+		capReq = "multi-prefix away-notify server-time sasl"
 	}
 
 	if err := irc.Handshake(conn, nick, nick, realname, serverPass, capReq); err != nil {
@@ -324,7 +324,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.sendWS(map[string]any{
 				"type": "message", "from": msg.Nick,
 				"target": target, "text": text,
-				"ts": time.Now().Unix(),
+				"ts": msgTime(msg),
 			})
 
 		case "JOIN":
@@ -507,7 +507,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.sendWS(map[string]any{
 				"type": "notice", "from": msg.Nick,
 				"target": msg.Params[0], "text": msg.Params[1],
-				"ts": time.Now().Unix(),
+				"ts": msgTime(msg),
 			})
 		}
 	}
@@ -583,6 +583,17 @@ func (s *Session) pingLoop() {
 			pingSent = time.Now()
 		}
 	}
+}
+
+// msgTime returns the Unix timestamp from the server-time tag if present,
+// falling back to the current time.
+func msgTime(msg irc.Message) int64 {
+	if t, ok := msg.Tags["time"]; ok {
+		if parsed, err := time.Parse(time.RFC3339Nano, t); err == nil {
+			return parsed.Unix()
+		}
+	}
+	return time.Now().Unix()
 }
 
 // Close shuts down the IRC connection and signals all goroutines (ircLoop,

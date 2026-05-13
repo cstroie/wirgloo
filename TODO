@@ -38,5 +38,5 @@
 - [x] Channel key support (/join #channel key)
 - [ ] Multiple server connections
 - [x] away-notify CAP — live away status without polling WHOIS
-- [ ] server-time CAP — use server timestamps instead of client clock
+- [x] server-time CAP — use server timestamps instead of client clock
 - [ ] DM history stored per nick (currently only channel logs are persisted)
