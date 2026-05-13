@@ -53,6 +53,7 @@ type Session struct {
 	authPass   string          // password for the chosen auth method
 	lastPong   time.Time       // wall time of the most recent PONG received
 	sendQ      chan string      // rate-limited outbound IRC line queue
+	channels   map[string]bool // channels the client is currently joined to
 }
 
 // Registry is a thread-safe map of active sessions keyed by session ID.
@@ -71,7 +72,7 @@ func NewRegistry() *Registry {
 // called to establish one.
 func (r *Registry) New(ws *websocket.Conn) *Session {
 	id := newID()
-	s := &Session{ID: id, ws: ws, done: make(chan struct{})}
+	s := &Session{ID: id, ws: ws, done: make(chan struct{}), channels: make(map[string]bool)}
 	r.mu.Lock()
 	r.sessions[id] = s
 	r.mu.Unlock()
@@ -92,9 +93,17 @@ func (r *Registry) Resume(id string, ws *websocket.Conn) *Session {
 	s.ws = ws
 	pending := s.buf
 	s.buf = nil
+	channels := make([]string, 0, len(s.channels))
+	for ch := range s.channels {
+		channels = append(channels, ch)
+	}
 	s.mu.Unlock()
 	for _, data := range pending {
 		ws.WriteMessage(websocket.TextMessage, data)
+	}
+	for _, ch := range channels {
+		s.SendIRC("NAMES " + ch)
+		s.SendIRC("TOPIC " + ch)
 	}
 	return s
 }
@@ -228,9 +237,16 @@ func (s *Session) writeNow(line string) {
 }
 
 // SendResumed notifies the browser that the WebSocket has been successfully
-// reattached to an existing IRC session.
+// reattached to an existing IRC session, including the current channel list so
+// the client can restore any channels that are missing from its local state.
 func (s *Session) SendResumed() {
-	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick})
+	s.mu.Lock()
+	channels := make([]string, 0, len(s.channels))
+	for ch := range s.channels {
+		channels = append(channels, ch)
+	}
+	s.mu.Unlock()
+	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "channels": channels})
 }
 
 // ircLoop processes every line received from the IRC server and forwards
@@ -348,6 +364,11 @@ func (s *Session) ircLoop(lines <-chan string) {
 				channel = msg.Params[0]
 			}
 			logger.L.Info("JOIN", "session", s.ID, "nick", msg.Nick, "channel", channel)
+			if msg.Nick == s.Nick {
+				s.mu.Lock()
+				s.channels[channel] = true
+				s.mu.Unlock()
+			}
 			s.sendWS(map[string]any{"type": "join", "nick": msg.Nick, "channel": channel})
 
 		case "PART":
@@ -356,6 +377,11 @@ func (s *Session) ircLoop(lines <-chan string) {
 				channel = msg.Params[0]
 			}
 			logger.L.Info("PART", "session", s.ID, "nick", msg.Nick, "channel", channel)
+			if msg.Nick == s.Nick {
+				s.mu.Lock()
+				delete(s.channels, channel)
+				s.mu.Unlock()
+			}
 			s.sendWS(map[string]any{"type": "part", "nick": msg.Nick, "channel": channel})
 
 		case "NICK":
@@ -505,6 +531,11 @@ func (s *Session) ircLoop(lines <-chan string) {
 				continue
 			}
 			logger.L.Info("KICK", "session", s.ID, "channel", msg.Params[0], "target", msg.Params[1], "by", msg.Nick)
+			if msg.Params[1] == s.Nick {
+				s.mu.Lock()
+				delete(s.channels, msg.Params[0])
+				s.mu.Unlock()
+			}
 			s.sendWS(map[string]any{
 				"type": "kick", "channel": msg.Params[0],
 				"nick": msg.Params[1], "by": msg.Nick, "text": msg.Trailing,

@@ -52,10 +52,29 @@
 html, body { height: 100%; font-family: var(--font-mono); background: var(--bg); color: var(--text); font-size: 14px; }
 
 /* ── Connect screen ─────────────────────────────────── */
-#connect-screen {
+#connect-screen, #restore-screen {
   display: flex; align-items: center; justify-content: center; height: 100%;
   background: var(--bg);
 }
+
+.restore-box { text-align: center; }
+.restore-box .subtitle { margin-bottom: 24px; }
+
+.restore-spinner {
+  width: 36px; height: 36px; margin: 0 auto 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.restore-box button {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text-dim); padding: 8px 16px; font-family: var(--font-mono);
+  font-size: 0.8rem; cursor: pointer; transition: color 0.15s, border-color 0.15s;
+}
+.restore-box button:hover { color: var(--text); border-color: var(--text-dim); }
 
 .connect-box {
   background: var(--bg2);

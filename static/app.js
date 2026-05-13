@@ -25,8 +25,9 @@ let reconnectDelay = 1000;
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const connectScreen = $('connect-screen');
-const chatScreen    = $('chat-screen');
+const connectScreen  = $('connect-screen');
+const restoreScreen  = $('restore-screen');
+const chatScreen     = $('chat-screen');
 const connectForm   = $('connect-form');
 const connectError  = $('connect-error');
 const myNick        = $('my-nick');
@@ -42,12 +43,18 @@ const userlist      = $('userlist');
   const urlSession = new URLSearchParams(location.search).get('s');
   if (urlSession) {
     state.sessionId = urlSession;
+    connectScreen.classList.add('hidden');
+    restoreScreen.classList.remove('hidden');
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
     state.ws = ws;
     ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch {} };
     ws.onerror = () => {};
-    ws.onclose = () => { if (state.sessionId || state.connectParams) scheduleReconnect(); };
+    ws.onclose = () => {
+      restoreScreen.classList.add('hidden');
+      if (state.sessionId || state.connectParams) scheduleReconnect();
+      else connectScreen.classList.remove('hidden');
+    };
   }
 }
 
@@ -212,6 +219,7 @@ connectForm.addEventListener('submit', e => {
     renderSavedProfiles();
   }
   state.server = server;
+  localStorage.setItem('wirgloo_session_server', server);
   state.connectParams = { server, port, nick, realname, tls, selfsigned, authMethod, pass };
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
@@ -285,6 +293,7 @@ function handle(msg) {
       state.connected = true;
       state.sessionId = msg.session;
       state.nick = msg.nick;
+      restoreScreen.classList.add('hidden');
       history.replaceState(null, '', '?s=' + msg.session);
       reconnectDelay = 1000;
       myNick.textContent = msg.nick;
@@ -303,14 +312,27 @@ function handle(msg) {
       break;
     }
 
-    case 'resumed':
+    case 'resumed': {
       state.connected = true;
       reconnectDelay = 1000;
-      appendMsg('*server*', { type: 'system', nick: '--', text: 'Reconnected' });
-      state.channels.forEach((_, target) => {
-        if (target.startsWith('#')) { const ch = state.channels.get(target); send({ type: 'join', channel: target, ...(ch?.key ? { key: ch.key } : {}) }); }
+      state.nick = msg.nick;
+      state.server = localStorage.getItem('wirgloo_session_server') || '';
+      myNick.textContent = msg.nick;
+      restoreSavedChannels(state.server);
+      // ensure any channels the server knows about are present and marked live
+      (msg.channels || []).forEach(ch => {
+        if (!state.channels.has(ch))
+          state.channels.set(ch, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: false });
+        else
+          state.channels.get(ch).offline = false;
       });
+      renderChannelList();
+      setActive('*server*');
+      restoreScreen.classList.add('hidden');
+      chatScreen.classList.remove('hidden');
+      appendMsg('*server*', { type: 'system', nick: '--', text: 'Session restored' });
       break;
+    }
 
     case 'connect_error':
       state.channels.clear();
@@ -324,6 +346,7 @@ function handle(msg) {
     case 'session_expired':
       state.sessionId = null;
       state.connected = false;
+      restoreScreen.classList.add('hidden');
       history.replaceState(null, '', location.pathname);
       if (state.connectParams) {
         // server was restarted — reconnect transparently using saved params
@@ -1264,6 +1287,15 @@ $('nick-btn').addEventListener('click', () => {
   openPanel(null);
   const n = prompt('New nickname:', state.nick);
   if (n && n !== state.nick) send({ type: 'nick', nick: n });
+});
+
+$('restore-cancel-btn').addEventListener('click', () => {
+  state.sessionId = null;
+  history.replaceState(null, '', location.pathname);
+  state.ws?.close();
+  state.ws = null;
+  restoreScreen.classList.add('hidden');
+  connectScreen.classList.remove('hidden');
 });
 
 $('disconnect-btn').addEventListener('click', () => {
