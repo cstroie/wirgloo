@@ -675,7 +675,12 @@ function renderMessages(target) {
   const ch = state.channels.get(target);
   messages.innerHTML = '';
   if (!ch) return;
-  ch.messages.forEach(m => messages.appendChild(buildMsgEl(m, target)));
+  let prevNick = null, prevTs = 0;
+  ch.messages.forEach(m => {
+    const grouped = canGroup(m, prevNick, prevTs);
+    messages.appendChild(buildMsgEl(m, target, grouped));
+    if (m.nick) { prevNick = m.nick; prevTs = m.ts || 0; }
+  });
   messages.scrollTop = messages.scrollHeight;
 }
 
@@ -688,16 +693,27 @@ function appendMsg(target, m) {
   persistMsg(target, m);
   if (target === state.active) {
     const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 60;
-    messages.appendChild(buildMsgEl(m, target));
+    const last = messages.lastElementChild;
+    const grouped = canGroup(m, last?.dataset.nick, parseFloat(last?.dataset.ts || 0));
+    messages.appendChild(buildMsgEl(m, target, grouped));
     if (atBottom) messages.scrollTop = messages.scrollHeight;
   }
 }
 
-function buildMsgEl(m, target) {
+// Two messages can be grouped (header hidden) when same nick within 2 minutes.
+function canGroup(m, prevNick, prevTs) {
+  const groupable = ['msg', 'notice', 'motd', 'whois', 'connecting'];
+  const cls = m.type || 'msg';
+  return groupable.includes(cls) && m.nick && m.nick === prevNick && (m.ts - prevTs) < 120;
+}
+
+function buildMsgEl(m, target, grouped = false) {
   const el  = document.createElement('div');
   const cls = m.type || 'msg';
   el.className = `msg ${cls}`;
   const ts = m.ts ? fmtTime(m.ts) : fmtTime(Date.now() / 1000);
+  if (m.nick) { el.dataset.nick = m.nick; el.dataset.ts = m.ts || 0; }
+  if (grouped) el.classList.add('grouped');
 
   if (cls === 'session-break') {
     el.className = 'session-break';
@@ -731,9 +747,13 @@ function buildMsgEl(m, target) {
     return el;
   }
 
+  if (self) el.classList.add('self');
+
+  const headerStyle = nc ? `color:${nc}` : '';
   el.innerHTML = `
     <span class="ts">${ts}</span>
     <span class="body">
+      <span class="msg-header" style="${headerStyle}">${escHtml(m.nick || '')} · ${ts}</span>
       <span class="nick-col ${self ? 'self' : ''}" style="${nc ? `color:${nc}` : ''}">${escHtml(m.nick || '')}</span>
       <span class="text">${highlightNicks(renderText(m.text), state.channels.get(state.active)?.nicks)}</span>
     </span>`;

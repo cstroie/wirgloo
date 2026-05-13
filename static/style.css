@@ -235,6 +235,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   scroll-behavior: smooth;
 }
 
+/* ── Messages — classic IRC layout (desktop) ─────── */
 .msg {
   display: grid; grid-template-columns: 52px 1fr; gap: 0 12px;
   line-height: 1.55; padding: 2px 6px; border-radius: 6px;
@@ -245,6 +246,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .msg .body { display: flex; gap: 8px; flex-wrap: wrap; word-break: break-word; }
 .msg .nick-col { min-width: 100px; max-width: 150px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
 .msg .text { flex: 1; min-width: 0; white-space: pre-wrap; }
+.msg-header { display: none; }
 .nick-mention { font-weight: bold; }
 
 .msg.mention { background: rgba(245,158,11,0.07); border-radius: 6px; }
@@ -463,8 +465,54 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   #userlist-panel.open { transform: translateX(0); }
 
   #topic-bar { padding: 0 8px; gap: 8px; }
-  #messages  { padding: 10px 10px; }
+  #messages  { padding: 6px 8px; gap: 2px; }
   #input-bar { padding: 6px 8px; }
 
   .connect-box { width: 95vw; padding: 28px 20px; }
+
+  /* ── Bubble layout (mobile only) ── */
+  .msg { display: block; padding: 2px 4px; }
+  .msg:hover { background: none; }
+  .msg .ts      { display: none; }
+  .msg .nick-col { display: none; }
+  .msg .body { flex-direction: column; gap: 2px; align-items: flex-start; }
+  .msg-header { display: block; font-size: 0.68rem; color: var(--text-dim); padding: 0 2px; }
+  .msg.grouped .msg-header { display: none; }
+  .msg.grouped { margin-top: 1px; }
+  .msg:not(.grouped) { margin-top: 8px; }
+
+  .msg .text {
+    background: var(--bg3); border-radius: 0 12px 12px 12px;
+    padding: 6px 10px; max-width: 88%;
+    white-space: pre-wrap; word-break: break-word; flex: none;
+  }
+
+  .msg.self .body { align-items: flex-end; }
+  .msg.self .text { border-radius: 12px 0 12px 12px; background: var(--accent-bg);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+
+  /* server / status — no bubble, centred */
+  .msg.system .body, .msg.join .body, .msg.part .body,
+  .msg.quit   .body, .msg.error .body, .msg.connecting .body,
+  .msg.motd   .body, .msg.notice .body, .msg.whois .body { align-items: center; }
+
+  .msg.system .msg-header, .msg.join .msg-header, .msg.part .msg-header,
+  .msg.quit   .msg-header, .msg.error .msg-header, .msg.connecting .msg-header,
+  .msg.motd   .msg-header, .msg.notice .msg-header, .msg.whois .msg-header { display: none; }
+
+  .msg.system .text, .msg.join .text, .msg.part .text,
+  .msg.quit   .text, .msg.error .text, .msg.connecting .text,
+  .msg.motd   .text, .msg.notice .text, .msg.whois .text {
+    background: none; border-radius: 0; padding: 2px 4px; max-width: 100%;
+  }
+
+  /* action — inline */
+  .msg.action .body { flex-direction: row; align-items: baseline; }
+  .msg.action .action-star { display: none; }
+  .msg.action .action-text { background: none; padding: 2px 4px; }
+
+  /* list — row, no bubble */
+  .msg.list .nick-col { display: block; }
+  .msg.list .body { flex-direction: row; align-items: baseline; gap: 8px; }
+  .msg.list .text { background: none; border-radius: 0; padding: 0; max-width: 100%; }
 }
