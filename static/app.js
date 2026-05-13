@@ -790,7 +790,7 @@ function buildMsgEl(m, target, grouped = false) {
       <span class="ts">${ts}</span>
       <span class="body">
         <span class="nick-col action-star" style="${nc ? `color:${nc}` : ''}">*</span>
-        <span class="action-text" style="${nc ? `color:${nc}` : ''}"><b>${escHtml(m.nick || '')}</b> ${highlightNicks(renderText(action), state.channels.get(state.active)?.nicks)}</span>
+        <span class="action-text" style="${nc ? `color:${nc}` : ''}"><b class="nick-link" data-nick="${escHtml(m.nick || '')}">${escHtml(m.nick || '')}</b> ${highlightNicks(renderText(action), state.channels.get(state.active)?.nicks)}</span>
       </span>`;
     return el;
   }
@@ -800,8 +800,8 @@ function buildMsgEl(m, target, grouped = false) {
   el.innerHTML = `
     <span class="ts">${ts}</span>
     <span class="body">
-      <span class="msg-header">${escHtml(m.nick || '')} · ${ts}</span>
-      <span class="nick-col ${self ? 'self' : ''}" style="${nc ? `color:${nc}` : ''}">${escHtml(m.nick || '')}</span>
+      <span class="msg-header nick-link" data-nick="${escHtml(m.nick || '')}">${escHtml(m.nick || '')} · ${ts}</span>
+      <span class="nick-col ${self ? 'self' : ''} nick-link" data-nick="${escHtml(m.nick || '')}" style="${nc ? `color:${nc}` : ''}">${escHtml(m.nick || '')}</span>
       <span class="text">${highlightNicks(renderText(m.text), state.channels.get(state.active)?.nicks)}</span>
     </span>`;
   return el;
@@ -962,7 +962,14 @@ function openPanel(panel) {
   backdrop.classList.toggle('visible', !!panel);
 }
 $('panel-backdrop').addEventListener('click', () => openPanel(null));
-messages.addEventListener('click', () => openPanel(null));
+messages.addEventListener('click', e => {
+  openPanel(null);
+  const nl = e.target.closest('.nick-link');
+  if (nl) {
+    const nick = nl.dataset.nick;
+    if (nick && nick !== state.nick) openDM(nick);
+  }
+});
 
 const scrollBottomBtn = $('scroll-bottom');
 messages.addEventListener('scroll', () => {

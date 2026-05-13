@@ -245,6 +245,8 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .msg .ts { color: var(--text-dim); font-size: 0.7rem; text-align: right; padding-top: 3px; white-space: nowrap; opacity: 0.7; }
 .msg .body { display: flex; gap: 8px; flex-wrap: wrap; word-break: break-word; }
 .msg .nick-col { min-width: 100px; max-width: 150px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+.nick-link { cursor: pointer; }
+.nick-link:hover { text-decoration: underline; }
 .msg .text { flex: 1; min-width: 0; white-space: pre-wrap; }
 .msg-header { display: none; }
 .nick-mention { font-weight: bold; }

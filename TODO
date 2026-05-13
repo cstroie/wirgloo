@@ -52,7 +52,7 @@
 - [ ] Unread scroll marker — visual line dividing seen vs new messages
 - [ ] Image/URL inline preview (opt-in)
 - [ ] /rejoin shortcut (part + join, useful after kicks or netsplits)
-- [ ] Clickable nicks in chat — open DM or show mini-profile
+- [x] Clickable nicks in chat — open DM
 
 ### IRC features
 - [ ] CTCP VERSION reply
