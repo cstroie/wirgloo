@@ -440,6 +440,10 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 
 /* ── Mobile layout ──────────────────────────────────── */
 @media (max-width: 640px) {
+  /* dvh tracks the visual viewport, so the layout shrinks when the keyboard opens */
+  html, body   { height: 100dvh; }
+  #chat-screen { height: 100dvh; }
+
   .panel-toggle { display: flex; align-items: center; justify-content: center; }
 
   #sidebar {
