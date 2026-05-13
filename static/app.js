@@ -740,7 +740,7 @@ function buildMsgEl(m, target, grouped = false) {
   const hue  = nickHue(m.nick);
   if (hue !== null) el.style.setProperty('--nc-hue', hue);
 
-  if (m.text && m.text.startsWith('/me ')) {
+  if (m.text && m.text.startsWith('/me ') && m.type !== 'system') {
     const action = m.text.slice(4);
     el.className += ' action' + (self ? ' self' : '');
     el.innerHTML = `
