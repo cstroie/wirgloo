@@ -671,6 +671,7 @@ function renderChannelList() {
 const SYSTEM_TYPES = new Set(['system', 'join', 'part', 'quit', 'error', 'connecting', 'motd', 'notice', 'whois']);
 
 function renderMessages(target) {
+  if (target === '*list*') { renderListMessages(); return; }
   const ch = state.channels.get(target);
   messages.innerHTML = '';
   if (!ch) return;
