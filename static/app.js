@@ -917,6 +917,15 @@ function openPanel(panel) {
 }
 $('panel-backdrop').addEventListener('click', () => openPanel(null));
 messages.addEventListener('click', () => openPanel(null));
+
+const scrollBottomBtn = $('scroll-bottom');
+messages.addEventListener('scroll', () => {
+  const dist = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+  scrollBottomBtn.classList.toggle('visible', dist > 200);
+}, { passive: true });
+scrollBottomBtn.addEventListener('click', () => {
+  messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
+});
 $('sidebar-toggle').addEventListener('click', () => {
   const isOpen = document.getElementById('sidebar').classList.contains('open');
   openPanel(isOpen ? null : 'sidebar');

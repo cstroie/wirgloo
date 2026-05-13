@@ -440,9 +440,90 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 }
 #panel-backdrop.visible { display: block; }
 
-/* ── Mobile layout ──────────────────────────────────── */
+/* ── Scroll-to-bottom button (mobile only) ──────────── */
+#scroll-bottom { display: none; }
+
+@media (max-width: 800px) {
+  #scroll-bottom {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; z-index: 50;
+    bottom: 72px; left: 50%; transform: translateX(-50%);
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--accent); color: #fff; border: none;
+    font-size: 1.4rem; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  #scroll-bottom.visible { opacity: 1; pointer-events: auto; }
+}
+
+/* ── Bubble layout (narrow + medium, ≤ 800px) ──────── */
+@media (max-width: 800px) {
+  .msg { display: block; padding: 1px 4px; }
+  .msg:hover { background: none; }
+  .msg .ts       { display: none; }
+  .msg .nick-col { display: none; }
+  .msg .body { flex-direction: column; gap: 1px; align-items: flex-start; }
+
+  /* nick header: colour driven by --nc-hue set inline by JS */
+  .msg-header {
+    display: block; font-size: 0.68rem; padding: 0 4px;
+    color: hsl(var(--nc-hue, 220), 55%, 68%);
+  }
+  .msg.grouped .msg-header { display: none; }
+
+  .msg:not(.grouped) { margin-top: 10px; }
+  .msg.grouped       { margin-top: 1px; }
+
+  /* bubble — tinted with nick hue (dark mode) */
+  .msg .text {
+    background: hsl(var(--nc-hue, 220), 18%, 20%);
+    border-radius: 4px 14px 14px 4px;
+    padding: 5px 10px; max-width: min(80%, 560px);
+    white-space: pre-wrap; word-break: break-word; flex: none;
+  }
+  .msg:not(.grouped) .text { border-radius: 14px 14px 14px 4px; }
+
+  .msg.self .body { align-items: flex-end; }
+  .msg.self .text {
+    background: hsl(var(--nc-hue, 255), 35%, 28%);
+    border-radius: 14px 4px 4px 14px;
+  }
+  .msg.self:not(.grouped) .text { border-radius: 14px 14px 4px 14px; }
+
+  @media (prefers-color-scheme: light) {
+    .msg-header { color: hsl(var(--nc-hue, 220), 55%, 38%); }
+    .msg .text  { background: hsl(var(--nc-hue, 220), 40%, 93%); }
+    .msg.self .text { background: hsl(var(--nc-hue, 255), 45%, 84%); }
+  }
+
+  /* server / status — no bubble, centred */
+  .msg.system .body, .msg.join .body, .msg.part .body,
+  .msg.quit   .body, .msg.error .body, .msg.connecting .body,
+  .msg.motd   .body, .msg.notice .body, .msg.whois .body { align-items: center; }
+
+  .msg.system .msg-header, .msg.join .msg-header, .msg.part .msg-header,
+  .msg.quit   .msg-header, .msg.error .msg-header, .msg.connecting .msg-header,
+  .msg.motd   .msg-header, .msg.notice .msg-header, .msg.whois .msg-header { display: none; }
+
+  .msg.system .text, .msg.join .text, .msg.part .text,
+  .msg.quit   .text, .msg.error .text, .msg.connecting .text,
+  .msg.motd   .text, .msg.notice .text, .msg.whois .text {
+    background: none; border-radius: 0; padding: 2px 4px; max-width: 100%;
+  }
+
+  .msg.action .body { flex-direction: row; align-items: baseline; }
+  .msg.action .action-star { display: none; }
+  .msg.action .action-text { background: none; padding: 2px 4px; }
+
+  .msg.list .nick-col { display: block; }
+  .msg.list .body { flex-direction: row; align-items: baseline; gap: 8px; }
+  .msg.list .text { background: none; border-radius: 0; padding: 0; max-width: 100%; }
+}
+
+/* ── Narrow mobile only (≤ 640px): slide-in panels ─── */
 @media (max-width: 640px) {
-  /* dvh tracks the visual viewport, so the layout shrinks when the keyboard opens */
   html, body   { height: 100dvh; }
   #chat-screen { height: 100dvh; }
 
@@ -467,74 +548,8 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   #topic-bar { padding: 0 8px; gap: 8px; }
   #messages  { padding: 6px 8px; gap: 2px; }
   #input-bar { padding: 6px 8px; }
-
   .connect-box { width: 95vw; padding: 28px 20px; }
 
-  /* ── Bubble layout (mobile only) ── */
-  .msg { display: block; padding: 1px 4px; }
-  .msg:hover { background: none; }
-  .msg .ts       { display: none; }
-  .msg .nick-col { display: none; }
-  .msg .body { flex-direction: column; gap: 1px; align-items: flex-start; }
-
-  /* nick header: uses --nc-hue set inline by JS */
-  .msg-header {
-    display: block; font-size: 0.68rem; padding: 0 4px;
-    color: hsl(var(--nc-hue, 220), 55%, 68%);
-  }
-  .msg.grouped .msg-header { display: none; }
-
-  /* group spacing: clear gap before first message of a group, tight between grouped */
-  .msg:not(.grouped) { margin-top: 10px; }
-  .msg.grouped       { margin-top: 1px; }
-
-  /* bubble — tinted with nick hue (dark mode default) */
-  .msg .text {
-    background: hsl(var(--nc-hue, 220), 18%, 20%);
-    border-radius: 4px 14px 14px 4px;
-    padding: 5px 10px; max-width: 88%;
-    white-space: pre-wrap; word-break: break-word; flex: none;
-  }
-  /* first in group: pointy top-left corner */
-  .msg:not(.grouped) .text { border-radius: 14px 14px 14px 4px; }
-
-  /* own messages */
-  .msg.self .body { align-items: flex-end; }
-  .msg.self .text {
-    background: hsl(var(--nc-hue, 255), 35%, 28%);
-    border-radius: 14px 4px 4px 14px;
-  }
-  .msg.self:not(.grouped) .text { border-radius: 14px 14px 4px 14px; }
-
-  /* light mode overrides */
-  @media (prefers-color-scheme: light) {
-    .msg-header { color: hsl(var(--nc-hue, 220), 55%, 38%); }
-    .msg .text  { background: hsl(var(--nc-hue, 220), 40%, 93%); }
-    .msg.self .text { background: hsl(var(--nc-hue, 255), 45%, 84%); }
-  }
-
-  /* server / status — no bubble, centred */
-  .msg.system .body, .msg.join .body, .msg.part .body,
-  .msg.quit   .body, .msg.error .body, .msg.connecting .body,
-  .msg.motd   .body, .msg.notice .body, .msg.whois .body { align-items: center; }
-
-  .msg.system .msg-header, .msg.join .msg-header, .msg.part .msg-header,
-  .msg.quit   .msg-header, .msg.error .msg-header, .msg.connecting .msg-header,
-  .msg.motd   .msg-header, .msg.notice .msg-header, .msg.whois .msg-header { display: none; }
-
-  .msg.system .text, .msg.join .text, .msg.part .text,
-  .msg.quit   .text, .msg.error .text, .msg.connecting .text,
-  .msg.motd   .text, .msg.notice .text, .msg.whois .text {
-    background: none; border-radius: 0; padding: 2px 4px; max-width: 100%;
-  }
-
-  /* action — inline */
-  .msg.action .body { flex-direction: row; align-items: baseline; }
-  .msg.action .action-star { display: none; }
-  .msg.action .action-text { background: none; padding: 2px 4px; }
-
-  /* list — row, no bubble */
-  .msg.list .nick-col { display: block; }
-  .msg.list .body { flex-direction: row; align-items: baseline; gap: 8px; }
-  .msg.list .text { background: none; border-radius: 0; padding: 0; max-width: 100%; }
+  /* narrower bubbles on small screens */
+  .msg .text { max-width: 88%; }
 }
