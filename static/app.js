@@ -134,68 +134,71 @@ $('delete-profile-btn').addEventListener('click', () => {
   applyNetworkSelection('libera');
 });
 
-// Restore last nick, saved profiles, and ignore list on page load.
-(function init() {
-  const nick = localStorage.getItem('wirgloo_nick');
-  if (nick) $('nick').value = nick;
-  const rn = localStorage.getItem('wirgloo_realname');
-  if (rn) $('realname').value = rn;
-  renderSavedProfiles();
-  const lastNet = localStorage.getItem('wirgloo_last_network');
-  if (lastNet) {
-    const sel = $('network');
-    if ([...sel.options].some(o => o.value === lastNet)) {
-      sel.value = lastNet;
-      applyNetworkSelection(lastNet);
-    }
-  }
-  const lastAuth = localStorage.getItem('wirgloo_auth_method');
-  if (lastAuth) {
-    $('auth-method').value = lastAuth;
-    $('pass-field').classList.toggle('hidden', lastAuth === 'none');
-  }
-  try {
-    const ig = JSON.parse(localStorage.getItem('wirgloo_ignored') || '[]');
-    ig.forEach(n => state.ignored.add(n.toLowerCase()));
-  } catch {}
-})();
+// ── Per-server settings ───────────────────────────────────────────────────────
+// Each server's settings are stored in one key: wirgloo_srv:<server>
+// Global keys: wirgloo_profiles, wirgloo_ignored, wirgloo_session_server
+
+function srvKey(server) { return `wirgloo_srv:${server}`; }
+
+function loadSrv(server) {
+  try { return JSON.parse(localStorage.getItem(srvKey(server)) || '{}'); }
+  catch { return {}; }
+}
+
+function saveSrv(server, patch) {
+  const data = loadSrv(server);
+  Object.assign(data, patch);
+  localStorage.setItem(srvKey(server), JSON.stringify(data));
+}
 
 function saveIgnored() {
   localStorage.setItem('wirgloo_ignored', JSON.stringify([...state.ignored]));
 }
 
-// ── Saved channel list ────────────────────────────────────────────────────────
-function channelsKey(server) { return `wirgloo_channels_${server}`; }
-
-function loadSavedChannels(server) {
-  try { return JSON.parse(localStorage.getItem(channelsKey(server)) || '[]'); }
-  catch { return []; }
+function saveChannels(server) {
+  const channels = [...state.channels.keys()].filter(t => t.startsWith('#') && !state.channels.get(t).offline);
+  saveSrv(server, { channels });
 }
 
 function saveDMs(server) {
   const dms = [...state.channels.keys()].filter(t => isDM(t));
-  localStorage.setItem(`wirgloo_dms_${server}`, JSON.stringify(dms));
-}
-
-function loadSavedDMs(server) {
-  try { return JSON.parse(localStorage.getItem(`wirgloo_dms_${server}`) || '[]'); }
-  catch { return []; }
-}
-
-function saveChannels(server) {
-  const active = [...state.channels.keys()].filter(t => t.startsWith('#') && !state.channels.get(t).offline);
-  localStorage.setItem(channelsKey(server), JSON.stringify(active));
+  saveSrv(server, { dms });
 }
 
 function restoreSavedChannels(server) {
-  loadSavedChannels(server).forEach(ch => {
-    if (!state.channels.has(ch)) {
+  const srv = loadSrv(server);
+  (srv.channels || []).forEach(ch => {
+    if (!state.channels.has(ch))
       state.channels.set(ch, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: true });
-    }
   });
-  loadSavedDMs(server).forEach(nick => { if (!state.channels.has(nick)) ensureChannel(nick); });
+  (srv.dms || []).forEach(nick => { if (!state.channels.has(nick)) ensureChannel(nick); });
   renderChannelList();
 }
+
+// Populate connect form from per-server settings (or fallback to last-used server).
+(function init() {
+  renderSavedProfiles();
+  try {
+    const ig = JSON.parse(localStorage.getItem('wirgloo_ignored') || '[]');
+    ig.forEach(n => state.ignored.add(n.toLowerCase()));
+  } catch {}
+  // pre-fill form from the last session server if known
+  const lastServer = localStorage.getItem('wirgloo_session_server');
+  const lastNet    = lastServer ? null : localStorage.getItem('wirgloo_last_network');
+  if (lastServer) {
+    const srv = loadSrv(lastServer);
+    if (srv.nick)       $('nick').value = srv.nick;
+    if (srv.realname)   $('realname').value = srv.realname;
+    if (srv.authMethod) { $('auth-method').value = srv.authMethod; $('pass-field').classList.toggle('hidden', srv.authMethod === 'none'); }
+    if (srv.lastNetwork) {
+      const sel = $('network');
+      if ([...sel.options].some(o => o.value === srv.lastNetwork)) { sel.value = srv.lastNetwork; applyNetworkSelection(srv.lastNetwork); }
+    }
+  } else if (lastNet) {
+    const sel = $('network');
+    if ([...sel.options].some(o => o.value === lastNet)) { sel.value = lastNet; applyNetworkSelection(lastNet); }
+  }
+})();
 
 // ── Connect form ─────────────────────────────────────────────────────────────
 connectForm.addEventListener('submit', e => {
@@ -209,11 +212,8 @@ connectForm.addEventListener('submit', e => {
   const pass       = $('pass').value;
   const realname   = $('realname').value.trim() || nick;
   if (!server || !nick) return;
-  localStorage.setItem('wirgloo_nick', nick);
-  if ($('realname').value.trim()) localStorage.setItem('wirgloo_realname', $('realname').value.trim());
   const netVal = $('network').value;
-  localStorage.setItem('wirgloo_last_network', netVal);
-  localStorage.setItem('wirgloo_auth_method', authMethod);
+  saveSrv(server, { nick, realname: $('realname').value.trim() || nick, authMethod, lastNetwork: netVal });
   if (netVal === 'custom' || netVal.startsWith('saved:')) {
     saveProfile({ server, port, tls, nick });
     renderSavedProfiles();
