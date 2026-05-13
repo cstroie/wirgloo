@@ -169,7 +169,7 @@ function saveChannels(server) {
 function restoreSavedChannels(server) {
   loadSavedChannels(server).forEach(ch => {
     if (!state.channels.has(ch)) {
-      state.channels.set(ch, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', offline: true });
+      state.channels.set(ch, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: true });
     }
   });
   loadSavedDMs(server).forEach(nick => { if (!state.channels.has(nick)) ensureChannel(nick); });
@@ -281,7 +281,7 @@ function handle(msg) {
         state.channels.forEach((ch, target) => {
           if (target.startsWith('#') && !ch.offline) {
             ch.nicks = new Map(); // clear stale nick list
-            send({ type: 'join', channel: target });
+            send({ type: 'join', channel: target, ...(ch.key ? { key: ch.key } : {}) });
           }
         });
       }
@@ -293,7 +293,7 @@ function handle(msg) {
       reconnectDelay = 1000;
       appendMsg('*server*', { type: 'system', nick: '--', text: 'Reconnected' });
       state.channels.forEach((_, target) => {
-        if (target.startsWith('#')) send({ type: 'join', channel: target });
+        if (target.startsWith('#')) { const ch = state.channels.get(target); send({ type: 'join', channel: target, ...(ch?.key ? { key: ch.key } : {}) }); }
       });
       break;
 
@@ -375,6 +375,21 @@ function handle(msg) {
       const dest = msg.target.startsWith('#') ? msg.target : '*server*';
       const setter = msg.nick || msg.target;
       appendMsg(dest, { type: 'system', nick: '', text: `${setter} sets mode ${msg.mode}` });
+      // track channel modes for +m/+R awareness and +k key memory
+      const ch = state.channels.get(msg.target);
+      if (ch) {
+        const parts = msg.mode.split(' ');
+        const flags = parts[0] || '';
+        const param = parts[1] || '';
+        let add = true;
+        for (const c of flags) {
+          if (c === '+') { add = true; continue; }
+          if (c === '-') { add = false; continue; }
+          if (c === 'k') { ch.key = add ? param : ''; continue; }
+          if (add) ch.modes.add(c); else ch.modes.delete(c);
+        }
+        if (dest === state.active) updateInputState();
+      }
       break;
     }
 
@@ -562,7 +577,7 @@ function ensureChannel(target) {
     const messages = history.length
       ? [...history, { type: 'session-break', nick: '', text: '', ts: null }]
       : [];
-    state.channels.set(target, { messages, nicks: new Map(), unread: 0, mention: false, topic: '' });
+    state.channels.set(target, { messages, nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '' });
     renderChannelList();
   }
 }
@@ -591,7 +606,27 @@ function setActive(target) {
   topicText.textContent = ch.topic || '';
   updateTitle();
   renderListBar();
+  updateInputState();
   input.focus();
+}
+
+function updateInputState() {
+  const ch = state.active && state.channels.get(state.active);
+  const muted = ch && (
+    (ch.modes.has('m') && !isVoicedOrOp(state.active, state.nick)) ||
+    (ch.modes.has('R') && !state.identified)
+  );
+  input.disabled = !!muted;
+  input.placeholder = muted
+    ? (ch.modes.has('m') ? 'Channel is moderated (+m)' : 'Registered users only (+R)')
+    : 'Message…';
+}
+
+function isVoicedOrOp(channel, nick) {
+  const ch = state.channels.get(channel);
+  if (!ch) return false;
+  const prefix = ch.nicks.get(nick) || '';
+  return prefix.length > 0; // any prefix (voice or above) grants speak rights in +m
 }
 
 function renderListBar() {
@@ -1043,6 +1078,8 @@ function handleCommand(raw) {
     case 'JOIN': {
       const [jchan, jkey] = arg.split(/\s+/, 2);
       send({ type: 'join', channel: jchan, ...(jkey ? { key: jkey } : {}) });
+      // pre-seed key so auto-rejoin can use it before MODE arrives
+      if (jkey) { ensureChannel(jchan); state.channels.get(jchan).key = jkey; }
       break;
     }
     case 'PART':

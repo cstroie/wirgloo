@@ -55,9 +55,9 @@
 - [x] Clickable nicks in chat — open DM
 
 ### IRC features
-- [ ] CTCP VERSION reply
-- [ ] +R/+m mode awareness — warn or dim input when you can't speak
-- [ ] Channel key memory — remember +k key for auto-rejoin
+- [x] CTCP VERSION reply
+- [x] +R/+m mode awareness — warn or dim input when you can't speak
+- [x] Channel key memory — remember +k key for auto-rejoin
 
 ### Comfort
 - [ ] Message search within a channel (/search keyword)

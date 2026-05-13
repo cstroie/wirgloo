@@ -288,6 +288,9 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
+#input:disabled {
+  opacity: 0.45; cursor: not-allowed; border-color: var(--border);
+}
 #send-btn {
   background: var(--accent); border: none; border-radius: var(--radius);
   color: #fff; font-family: var(--font-mono); padding: 9px 20px; cursor: pointer;

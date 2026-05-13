@@ -316,6 +316,8 @@ func (s *Session) ircLoop(lines <-chan string) {
 				token := strings.TrimSuffix(strings.TrimPrefix(text, "\x01"), "\x01")
 				s.writeNow("NOTICE " + msg.Nick + " :\x01" + token + "\x01")
 				continue
+			} else if strings.HasPrefix(text, "\x01VERSION\x01") {
+				s.writeNow("NOTICE " + msg.Nick + " :\x01VERSION wirgloo\x01")
 			} else if strings.HasPrefix(text, "\x01") && strings.HasSuffix(text, "\x01") {
 				// ignore other CTCP requests silently
 				continue
