@@ -1,6 +1,12 @@
-// Package logger provides a package-level slog.Logger instance shared across
-// all packages. Call Init once at startup to configure the output format and
-// minimum log level; the default before Init is called is slog.Default().
+// Wirgloo — a self-hosted web IRC client.
+// https://github.com/cstroie/wirgloo
+//
+// Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Package logger provides a shared slog.Logger used by all packages.
+// Call Init once at startup to configure the output format and minimum
+// log level. Before Init is called L falls back to slog.Default().
 package logger
 
 import (

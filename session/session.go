@@ -1,8 +1,15 @@
+// Wirgloo — a self-hosted web IRC client.
+// https://github.com/cstroie/wirgloo
+//
+// Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // Package session manages the lifecycle of connected clients. Each browser
-// tab gets a Session that owns one WebSocket connection and one IRC TCP
-// connection. The Registry keeps track of all live sessions and supports
-// WebSocket reconnection: when a browser's WebSocket drops the IRC connection
-// stays alive for up to wsReconnectWindow so the client can reattach.
+// tab owns one Session that pairs a WebSocket connection with an IRC TCP
+// connection. The Registry tracks all live sessions and supports transparent
+// WebSocket reconnection: when the browser's socket drops the IRC connection
+// stays alive for up to wsReconnectWindow so the client can reattach without
+// losing channel membership or message history.
 package session
 
 import (
@@ -21,31 +28,31 @@ import (
 	"wirgloo/logger"
 )
 
-const wsReconnectWindow = 60 * time.Second // how long to keep an IRC session alive without a WS
-const bufferMax         = 500              // maximum IRC messages buffered while WS is detached
-const pingInterval      = 90 * time.Second // how often to send a client-initiated PING
-const pingTimeout       = 60 * time.Second // how long to wait for a PONG before closing
+const wsReconnectWindow = 60 * time.Second // idle WS window before the IRC connection is torn down
+const bufferMax         = 500              // max IRC messages buffered while the WS is detached
+const pingInterval      = 90 * time.Second // how often to send a client-initiated PING to the server
+const pingTimeout       = 60 * time.Second // max time to wait for a PONG before declaring the link dead
 
 const (
-	sendBurst    = 5                      // initial token allowance
-	sendInterval = 333 * time.Millisecond // one new token every ~333 ms (≈ 3/s)
+	sendBurst    = 5                      // initial token allowance for the outbound rate limiter
+	sendInterval = 333 * time.Millisecond // one new token every ~333 ms (≈ 3 lines/sec)
 )
 
 // Session represents one connected browser client and its associated IRC
-// connection. All fields are protected by mu except ID and done (immutable
-// after creation).
+// connection. All fields are protected by mu except ID and done, which are
+// immutable after creation and safe to read without holding the lock.
 type Session struct {
-	ID         string
-	Nick       string
-	mu         sync.Mutex
-	ws         *websocket.Conn
-	buf        [][]byte // messages buffered while WS is detached
-	conn       net.Conn
-	done       chan struct{}
-	authMethod string // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
-	authPass   string
-	lastPong   time.Time
-	sendQ      chan string // rate-limited outbound line queue
+	ID         string          // unique session identifier, hex-encoded random bytes
+	Nick       string          // current IRC nick, updated on NICK events
+	mu         sync.Mutex      // guards all mutable fields below
+	ws         *websocket.Conn // current WebSocket; nil while detached
+	buf        [][]byte        // JSON messages buffered while ws is nil
+	conn       net.Conn        // underlying IRC TCP connection
+	done       chan struct{}    // closed once to signal all goroutines to exit
+	authMethod string          // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
+	authPass   string          // password for the chosen auth method
+	lastPong   time.Time       // wall time of the most recent PONG received
+	sendQ      chan string      // rate-limited outbound IRC line queue
 }
 
 // Registry is a thread-safe map of active sessions keyed by session ID.
@@ -228,8 +235,9 @@ func (s *Session) SendResumed() {
 
 // ircLoop processes every line received from the IRC server and forwards
 // relevant events to the browser as JSON WebSocket messages. It runs in its
-// own goroutine and exits when the lines channel is closed (i.e. when
-// ReadLoop returns after a connection drop or done is closed).
+// own goroutine and exits when the lines channel is closed — either because
+// the TCP connection dropped or because done was closed. After the loop ends
+// it sends a "disconnected" message so the browser can show a reconnect UI.
 func (s *Session) ircLoop(lines <-chan string) {
 	for line := range lines {
 		msg := irc.ParseLine(line)
@@ -310,16 +318,21 @@ func (s *Session) ircLoop(lines <-chan string) {
 				continue
 			}
 			target, text := msg.Params[0], msg.Params[1]
+			// CTCP messages are wrapped in \x01 bytes.
 			if strings.HasPrefix(text, "\x01ACTION ") && strings.HasSuffix(text, "\x01") {
+				// Convert ACTION to the /me pseudo-command used by the UI.
 				text = "/me " + strings.TrimSuffix(strings.TrimPrefix(text, "\x01ACTION "), "\x01")
 			} else if strings.HasPrefix(text, "\x01PING") && strings.HasSuffix(text, "\x01") {
+				// Echo the token back so the requester can measure round-trip time.
 				token := strings.TrimSuffix(strings.TrimPrefix(text, "\x01"), "\x01")
 				s.writeNow("NOTICE " + msg.Nick + " :\x01" + token + "\x01")
 				continue
 			} else if strings.HasPrefix(text, "\x01VERSION\x01") {
+				// Identify ourselves; the version string is intentionally minimal.
 				s.writeNow("NOTICE " + msg.Nick + " :\x01VERSION wirgloo\x01")
+				continue
 			} else if strings.HasPrefix(text, "\x01") && strings.HasSuffix(text, "\x01") {
-				// ignore other CTCP requests silently
+				// Unrecognised CTCP request — ignore rather than forward to the UI.
 				continue
 			}
 			logger.L.Debug("PRIVMSG", "session", s.ID, "from", msg.Nick, "target", target)

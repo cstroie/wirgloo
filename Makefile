@@ -1,13 +1,14 @@
 PREFIX      ?= /usr/local
 BINARY      := wirgloo
 SYSTEMD_DIR ?= /etc/systemd/system
+VERSION     := $(shell date +%y%m%d)
 
 .PHONY: all build install install-service uninstall uninstall-service clean
 
 all: build
 
 build:
-	go build -o $(BINARY) .
+	go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY) .
 
 install: build
 	install -Dm755 $(BINARY) $(PREFIX)/bin/$(BINARY)

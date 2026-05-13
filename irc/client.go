@@ -1,5 +1,13 @@
-// Package irc handles the low-level IRC protocol: dialing, the registration
-// handshake, writing lines, reading lines, and parsing RFC 1459 messages.
+// Wirgloo — a self-hosted web IRC client.
+// https://github.com/cstroie/wirgloo
+//
+// Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Package irc handles the low-level IRC protocol: dialing the server,
+// performing the registration handshake, writing rate-limited lines,
+// reading lines in a background goroutine, and parsing RFC 1459 messages
+// with IRCv3 message-tag support.
 package irc
 
 import (
@@ -146,7 +154,8 @@ func ParseLine(line string) Message {
 	return msg
 }
 
-// parseTags parses an IRCv3 tag string into a map.
+// parseTags splits an IRCv3 tag string ("key=val;key2=val2") into a map.
+// Keys without a value are stored with an empty string.
 func parseTags(s string) map[string]string {
 	tags := make(map[string]string)
 	for _, pair := range strings.Split(s, ";") {

@@ -1,6 +1,13 @@
-// Package ws handles the WebSocket layer between the browser and the server.
-// Each browser connection maps to a Session; messages from the browser are
-// dispatched to IRC commands, and IRC events flow back over the same socket.
+// Wirgloo — a self-hosted web IRC client.
+// https://github.com/cstroie/wirgloo
+//
+// Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Package ws implements the WebSocket layer between the browser and the server.
+// Each HTTP upgrade becomes a Session; inbound JSON messages from the browser
+// are dispatched to IRC commands via the session package, and all IRC events
+// flow back over the same WebSocket as JSON.
 package ws
 
 import (
@@ -99,10 +106,12 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 }
 
 // dispatch routes an inbound browser message to the appropriate Session method
-// or IRC command. Unknown message types are silently ignored.
+// or raw IRC command. Unknown message types are silently ignored so future
+// client-only messages don't require server changes.
 func dispatch(s *session.Session, msg inMsg) error {
 	switch msg.Type {
 	case "connect":
+		// Apply IRC default ports when the browser omits them.
 		if msg.Port == 0 {
 			if msg.TLS {
 				msg.Port = 6697
@@ -118,6 +127,7 @@ func dispatch(s *session.Session, msg inMsg) error {
 		}
 		s.Quit(reason)
 	case "join":
+		// Pass the channel key when joining a +k channel.
 		if msg.Key != "" {
 			return s.SendIRC("JOIN " + msg.Channel + " " + msg.Key)
 		}
@@ -129,6 +139,7 @@ func dispatch(s *session.Session, msg inMsg) error {
 	case "nick":
 		return s.SendIRC("NICK " + msg.Nick)
 	case "raw":
+		// Allows the browser to send arbitrary IRC lines (e.g. /raw).
 		return s.SendIRC(msg.Line)
 	}
 	return nil

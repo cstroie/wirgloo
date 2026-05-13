@@ -1,6 +1,12 @@
-// wirgloo is a web IRC client. It serves a single-page browser UI and proxies
-// IRC connections over WebSocket, so users can connect to any IRC network
-// from a plain browser without installing anything.
+// Wirgloo — a self-hosted web IRC client.
+// https://github.com/cstroie/wirgloo
+//
+// Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// main is the entry point. It starts an HTTP server that serves the embedded
+// single-page UI and proxies IRC connections over WebSocket, so users can
+// connect to any IRC network from a plain browser without installing anything.
 package main
 
 import (
@@ -17,7 +23,11 @@ import (
 )
 
 //go:embed static/*
-var staticFiles embed.FS
+var staticFiles embed.FS // embedded copy of the static/ directory, baked in at build time
+
+// version is injected at build time via -ldflags "-X main.version=YYMMDD".
+// Falls back to "dev" when built without the Makefile.
+var version = "dev"
 
 func main() {
 	addr     := flag.String("addr", "0.0.0.0:6677", "listen address")
@@ -50,7 +60,7 @@ func main() {
 		http.Handle("/", http.FileServer(http.FS(sub)))
 	}
 
-	logger.L.Info("wirgloo starting", "addr", *addr)
+	logger.L.Info("wirgloo starting", "version", version, "addr", *addr)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
 		logger.L.Error("server error", "err", err)
 		os.Exit(1)
