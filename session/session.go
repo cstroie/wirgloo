@@ -567,9 +567,10 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if len(msg.Params) < 3 {
 				continue
 			}
+			count, _ := strconv.Atoi(msg.Params[2])
 			s.sendWS(map[string]any{
 				"type": "list_item", "channel": msg.Params[1],
-				"count": msg.Params[2], "topic": msg.Trailing,
+				"count": count, "topic": msg.Trailing,
 			})
 
 		case "323": // RPL_LISTEND

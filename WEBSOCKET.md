@@ -456,10 +456,8 @@ The channel list (`/list`) is delivered as `list_start`, zero or more `list_item
 #### `list_item`
 
 ```json
-{ "type": "list_item", "channel": "#channel", "count": "42", "topic": "Channel topic" }
+{ "type": "list_item", "channel": "#channel", "count": 42, "topic": "Channel topic" }
 ```
-
-`count` is a string (raw IRC parameter).
 
 #### `list_end`
 
@@ -515,5 +513,5 @@ Generic IRC error forwarded to the browser. Sources: `ERR_NICKNAMEINUSE` (433), 
 | `nicks` | array of strings | Only in `names_chunk` |
 | `channels` | array of strings | In `resumed` and `whois_data` (field=channels) |
 | `meta` | object | Only in `resumed`; mirrors accumulated `server_meta` keys |
-| `seconds` | string | Idle seconds in `whois_data` (field=idle) — raw IRC string |
-| `count` | string | User count in `list_item` — raw IRC string |
+| `seconds` | number | Idle seconds in `whois_data` (field=idle) |
+| `count` | number | User count in `list_item` |
