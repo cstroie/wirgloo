@@ -144,7 +144,9 @@ The browser must save `session` and append it as `?session=<id>` to future WebSo
 
 #### `resumed`
 
-Sent after a successful WebSocket reconnect to an existing session. Buffered messages are flushed to the socket before this message.
+Sent after a successful WebSocket reconnect to an existing session.
+
+> **Ordering:** Buffered messages (up to 500) are flushed to the new socket *before* `resumed` is sent. The client receives `[buffered msgs…] resumed`, not `resumed [buffered msgs…]`. Handle `resumed` as a signal that the replay is complete, not that it is about to begin.
 
 ```json
 {
