@@ -482,7 +482,7 @@ function handle(msg) {
         if (firstJoin) {
           if (!state.joiningChannels) state.joiningChannels = new Set();
           state.joiningChannels.add(msg.channel);
-          appendMsg(msg.channel, { type: 'system', nick: '', text: `Now talking on ${msg.channel}` });
+          appendMsg(msg.channel, { type: 'system', nick: '*', text: `Now talking on ${msg.channel}` });
         }
         setActive(msg.channel);
         saveChannels(state.server); saveDMs(state.server);
@@ -507,7 +507,7 @@ function handle(msg) {
     case 'mode': {
       const dest = msg.target.startsWith('#') ? msg.target : '*server*';
       const setter = msg.nick || msg.target;
-      appendMsg(dest, { type: 'system', nick: '', text: `${setter} sets mode ${msg.mode}` });
+      appendMsg(dest, { type: 'system', nick: '*', text: `${setter} sets mode ${msg.mode}` });
       // track channel modes for +m/+R awareness and +k key memory
       const ch = state.channels.get(msg.target);
       if (ch) {
@@ -563,14 +563,14 @@ function handle(msg) {
           const prefix = ch.nicks.get(msg.old);
           ch.nicks.delete(msg.old);
           ch.nicks.set(msg.new, prefix);
-          appendMsg(target, { type: 'system', nick: '', text: `${msg.old} is now known as ${msg.new}` });
+          appendMsg(target, { type: 'system', nick: '*', text: `${msg.old} is now known as ${msg.new}` });
         }
       });
       renderUserlist();
       break;
 
     case 'whois': {
-      appendMsg('*server*', { type: 'whois', nick: '', text: msg.text });
+      appendMsg('*server*', { type: 'whois', nick: '*', text: msg.text });
       if (state.active !== '*server*') bumpUnread('*server*', false);
       // feed whois cache for any pending nick
       if (state.pendingWhois) {
@@ -608,7 +608,7 @@ function handle(msg) {
       break;
 
     case 'motd':
-      appendMsg('*server*', { type: 'motd', nick: '', text: msg.text });
+      appendMsg('*server*', { type: 'motd', nick: '*', text: msg.text });
       break;
 
     case 'list_start':
@@ -634,9 +634,9 @@ function handle(msg) {
         ch.topic = msg.text;
         if (msg.channel === state.active) topicText.textContent = msg.text;
         if (state.joiningChannels?.has(msg.channel) && msg.text) {
-          appendMsg(msg.channel, { type: 'system', nick: '', text: `Topic for ${msg.channel} is: ${msg.text}` });
+          appendMsg(msg.channel, { type: 'system', nick: '*', text: `Topic for ${msg.channel} is: ${msg.text}` });
         } else if (msg.nick) {
-          appendMsg(msg.channel, { type: 'system', nick: '', text: `${msg.nick} changed the topic to: ${msg.text}` });
+          appendMsg(msg.channel, { type: 'system', nick: '*', text: `${msg.nick} changed the topic to: ${msg.text}` });
         }
       }
       break;
@@ -644,7 +644,7 @@ function handle(msg) {
 
     case 'topic_meta': {
       if (state.joiningChannels?.has(msg.channel)) {
-        appendMsg(msg.channel, { type: 'system', nick: '', text: `Topic set by ${msg.setter} (${msg.time})` });
+        appendMsg(msg.channel, { type: 'system', nick: '*', text: `Topic set by ${msg.setter} (${msg.time})` });
         state.joiningChannels.delete(msg.channel);
       }
       break;
