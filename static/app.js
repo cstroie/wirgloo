@@ -608,7 +608,7 @@ function handle(msg) {
       break;
 
     case 'motd':
-      appendMsg('*server*', { type: 'motd', nick: '*', text: msg.text });
+      appendMsg('*server*', { type: 'motd', nick: '-', text: msg.text });
       break;
 
     case 'list_start':
@@ -993,7 +993,7 @@ function buildMsgEl(m, target, grouped = false) {
 
   if (self) el.classList.add('self');
 
-  const isSentinel = !m.nick || m.nick === '*' || m.nick === '--' || m.nick === '!';
+  const isSentinel = !m.nick || m.nick === '*' || m.nick === '-' || m.nick === '--' || m.nick === '!';
   el.innerHTML = `
     <span class="ts">${ts}</span>
     <span class="body">

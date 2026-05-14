@@ -555,7 +555,8 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s is using a secure connection", msg.Params[1])})
 
 		case "375", "372": // RPL_MOTDSTART, RPL_MOTD
-			s.sendWS(map[string]any{"type": "motd", "text": msg.Trailing})
+			text := strings.TrimPrefix(msg.Trailing, "- ")
+			s.sendWS(map[string]any{"type": "motd", "text": text})
 
 		case "376": // RPL_ENDOFMOTD — no message needed
 
