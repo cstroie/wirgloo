@@ -76,7 +76,7 @@ Join a channel.
 | Field     | Type   | Required | Description                       |
 |-----------|--------|----------|-----------------------------------|
 | `type`    | string | yes      | `"join"`                          |
-| `channel` | string | yes      | Channel name (e.g. `"#example"`) |
+| `channel` | string | yes      | Channel name (e.g. `"#example"`)  |
 | `key`     | string | no       | Channel key for +k channels       |
 
 ### `part`
@@ -506,17 +506,17 @@ Generic IRC error forwarded to the browser. Sources: `ERR_NICKNAMEINUSE` (433), 
 
 ## Field type summary
 
-| Field      | JSON type        | Notes                                                        |
-|------------|------------------|--------------------------------------------------------------|
-| `type`     | string           | Always present, discriminates message kind                   |
-| `nick`     | string           | IRC nickname                                                 |
-| `channel`  | string           | `#channel`                                                   |
-| `text`     | string           | Human-readable text or message body                          |
+| Field      | JSON type        | Notes                                                         |
+|------------|------------------|---------------------------------------------------------------|
+| `type`     | string           | Always present, discriminates message kind                    |
+| `nick`     | string           | IRC nickname                                                  |
+| `channel`  | string           | `#channel`                                                    |
+| `text`     | string           | Human-readable text or message body                           |
 | `ts`       | number           | Unix timestamp in seconds; present on all chat/channel events |
-| `ms`       | number           | Round-trip time in milliseconds                              |
-| `away`     | boolean          | Only in `away_status`                                        |
-| `nicks`    | array of strings | Only in `names_chunk`                                        |
-| `channels` | array of strings | In `resumed` and `whois_data` (field=channels)               |
-| `meta`     | object           | Only in `resumed`; mirrors accumulated `server_meta` keys    |
-| `seconds`  | number           | Idle seconds in `whois_data` (field=idle)                    |
-| `count`    | number           | User count in `list_item`                                    |
+| `ms`       | number           | Round-trip time in milliseconds                               |
+| `away`     | boolean          | Only in `away_status`                                         |
+| `nicks`    | array of strings | Only in `names_chunk`                                         |
+| `channels` | array of strings | In `resumed` and `whois_data` (field=channels)                |
+| `meta`     | object           | Only in `resumed`; mirrors accumulated `server_meta` keys     |
+| `seconds`  | number           | Idle seconds in `whois_data` (field=idle)                     |
+| `count`    | number           | User count in `list_item`                                     |
