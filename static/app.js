@@ -552,7 +552,7 @@ function handle(msg) {
       state.channels.forEach((ch, target) => {
         if (ch.nicks.has(msg.nick)) {
           ch.nicks.delete(msg.nick);
-          appendMsg(target, { type: 'quit', nick: '', text: `← ${msg.nick} quit (${msg.text})`, ts: msg.ts });
+          appendMsg(target, { type: 'quit', nick: '', text: `← ${msg.nick} quit${msg.text ? ' (' + msg.text + ')' : ''}`, ts: msg.ts });
         }
       });
       renderUserlist();
