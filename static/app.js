@@ -483,8 +483,9 @@ function handle(msg) {
         const firstJoin = !state.channels.has(msg.channel);
         ensureChannel(msg.channel);
         const joiningCh = state.channels.get(msg.channel);
+        const wasOffline = joiningCh?.offline ?? false;
         if (joiningCh) joiningCh.offline = false;
-        if (firstJoin) {
+        if (firstJoin || wasOffline) {
           if (!state.joiningChannels) state.joiningChannels = new Set();
           state.joiningChannels.add(msg.channel);
           appendMsg(msg.channel, { type: 'system', nick: '*', text: `Now talking on ${msg.channel}` });
@@ -495,7 +496,7 @@ function handle(msg) {
         ensureChannel(msg.channel);
         state.channels.get(msg.channel)?.nicks.set(msg.nick, '');
         renderUserlist();
-        appendMsg(msg.channel, { type: 'join', nick: '', text: `→ ${msg.nick} joined ${msg.channel}`, ts: msg.ts });
+        appendMsg(msg.channel, { type: 'join', nick: '→', text: `${msg.nick} joined ${msg.channel}`, ts: msg.ts });
       }
       break;
 
@@ -505,7 +506,7 @@ function handle(msg) {
         saveChannels(state.server); saveDMs(state.server);
       } else {
         state.channels.get(msg.channel)?.nicks.delete(msg.nick);        renderUserlist();
-        appendMsg(msg.channel, { type: 'part', nick: '', text: `← ${msg.nick} left ${msg.channel}${msg.text ? ' (' + msg.text + ')' : ''}`, ts: msg.ts });
+        appendMsg(msg.channel, { type: 'part', nick: '←', text: `${msg.nick} left ${msg.channel}${msg.text ? ' (' + msg.text + ')' : ''}`, ts: msg.ts });
       }
       break;
 
@@ -543,7 +544,7 @@ function handle(msg) {
         ch.nicks.delete(msg.nick);
         renderUserlist();
         const reason = msg.text ? ` (${msg.text})` : '';
-        appendMsg(msg.channel, { type: 'part', nick: '', text: `← ${msg.nick} was kicked by ${msg.by}${reason}`, ts: msg.ts });
+        appendMsg(msg.channel, { type: 'part', nick: '←', text: `${msg.nick} was kicked by ${msg.by}${reason}`, ts: msg.ts });
       }
       if (msg.nick === state.nick) removeChannel(msg.channel);
       break;
@@ -553,7 +554,7 @@ function handle(msg) {
       state.channels.forEach((ch, target) => {
         if (ch.nicks.has(msg.nick)) {
           ch.nicks.delete(msg.nick);
-          appendMsg(target, { type: 'quit', nick: '', text: `← ${msg.nick} quit${msg.text ? ' (' + msg.text + ')' : ''}`, ts: msg.ts });
+          appendMsg(target, { type: 'quit', nick: '←', text: `${msg.nick} quit${msg.text ? ' (' + msg.text + ')' : ''}`, ts: msg.ts });
         }
       });
       renderUserlist();
@@ -1011,7 +1012,7 @@ function buildMsgEl(m, target, grouped = false) {
 
   if (self) el.classList.add('self');
 
-  const isSentinel = !m.nick || m.nick === '*' || m.nick === '-' || m.nick === '--' || m.nick === '!';
+  const isSentinel = !m.nick || m.nick === '*' || m.nick === '-' || m.nick === '--' || m.nick === '!' || m.nick === '→' || m.nick === '←';
   el.innerHTML = `
     <span class="ts">${ts}</span>
     <span class="body">
