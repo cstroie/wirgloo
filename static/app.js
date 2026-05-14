@@ -15,6 +15,9 @@ const state = {
   pendingWhois: null,
   ignored: new Set(),    // client-side ignored nicks
   listItems: [],         // raw {channel, count, topic} from LIST
+  network: '',           // NETWORK= value from 005, e.g. "Libera.Chat"
+  servername: '',        // server hostname from 004 RPL_MYINFO
+  serverMeta: {},        // accumulated server_meta key/value pairs
   listSort: 'users',     // 'name' | 'users' | 'topic'
   dmOriginChannel: null, // channel active when a DM was opened from the user list
   // prefix support — populated from server 005 PREFIX token
@@ -300,6 +303,22 @@ function handle(msg) {
       break;
     }
 
+    case 'server_meta':
+      state.serverMeta[msg.key] = msg.value;
+      if (state.active === '*server*') renderUserlist();
+      break;
+
+    case 'isupport_network':
+      state.network = msg.value;
+      applyServerMeta(state.network, state.servername, null);
+      renderChannelList();
+      break;
+
+    case 'servername':
+      state.servername = msg.value;
+      applyServerMeta(state.network, state.servername, null);
+      break;
+
     case 'connected': {
       const wasReconnect = state.connectParams && !state.connected;
       state.connected = true;
@@ -309,7 +328,9 @@ function handle(msg) {
       history.replaceState(null, '', '?s=' + msg.session);
       reconnectDelay = 1000;
       myNick.textContent = msg.nick;
-      appendMsg('*server*', { type: 'system', nick: '--', text: `Connected as ${msg.nick}` });
+      state.serverMeta = {};
+      applyServerMeta(msg.network, msg.servername, msg.welcome);
+      appendMsg('*server*', { type: 'system', nick: '--', text: `Connected to ${state.server} as ${msg.nick}` });
       requestNotifyPermission();
       restoreSavedChannels(state.server);
       // re-join channels that were active before a session_expired reconnect
@@ -330,6 +351,9 @@ function handle(msg) {
       state.nick = msg.nick;
       state.server = localStorage.getItem('wirgloo_session_server') || '';
       myNick.textContent = msg.nick;
+      ensureChannel('*server*');
+      if (msg.meta) state.serverMeta = msg.meta;
+      applyServerMeta(msg.network, msg.servername, msg.welcome);
       restoreSavedChannels(state.server);
       // ensure any channels the server knows about are present and marked live
       (msg.channels || []).forEach(ch => {
@@ -645,7 +669,7 @@ function removeChannel(target) {
 
 function setActive(target) {
   if (!target || !state.channels.has(target)) return;
-  openPanel(isDM(target) ? 'userlist' : null);
+  openPanel((isDM(target) || target === '*server*') ? 'userlist' : null);
   state.active = target;
   state.dmOriginChannel = null;
   const ch = state.channels.get(target);
@@ -653,8 +677,9 @@ function setActive(target) {
   ch.mention = false;
   renderChannelList();
   renderMessages(target);
+  document.getElementById('userlist-panel').classList.toggle('wide', target === '*server*');
   renderUserlist();
-  targetName.textContent = target === '*server*' ? state.server : target;
+  targetName.textContent = target === '*server*' ? (state.servername || state.server) : target;
   topicText.textContent = ch.topic || '';
   updateTitle();
   renderListBar();
@@ -719,7 +744,7 @@ function renderListMessages() {
 }
 
 function updateTitle() {
-  const label = state.active === '*server*' ? state.server : state.active;
+  const label = state.active === '*server*' ? (state.servername || state.server) : state.active;
   document.title = label ? `${label} — wirgloo` : 'wirgloo';
 }
 
@@ -753,6 +778,17 @@ function notify(target, fromNick, text) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
+function applyServerMeta(network, servername, welcome) {
+  if (network)    state.network    = network;
+  if (servername) state.servername = servername;
+  const srv = state.channels.get('*server*');
+  if (srv && welcome) srv.topic = welcome;
+  if (state.active === '*server*') {
+    targetName.textContent = state.servername || state.server;
+    if (welcome !== null) topicText.textContent = welcome || '';
+  }
+}
+
 function renderChannelList() {
   channelList.innerHTML = '';
   state.channels.forEach((ch, target) => {
@@ -762,7 +798,7 @@ function renderChannelList() {
       (ch.offline ? ' offline' : '') +
       (ch.mention ? ' mention' : ch.unread > 0 ? ' unread' : '');
     let icon, label;
-    if (target === '*server*') { icon = '🖧'; label = state.server; }
+    if (target === '*server*') { icon = '🖧'; label = state.network || state.servername || state.server; }
     else if (target === '*list*') { icon = '☰'; label = 'Channel list'; }
     else if (target.startsWith('#')) { icon = '＃'; label = target.slice(1); }
     else { icon = '◉'; label = target; } // DM
@@ -943,6 +979,39 @@ function renderUserlist() {
   userlist.innerHTML = '';
   footer.innerHTML = '';
   footer.classList.add('hidden');
+
+  if (state.active === '*server*') {
+    header.textContent = 'Server';
+    const m = state.serverMeta;
+    const rows = [];
+    const row = (k, v) => `<div class="wi-row"><span class="wi-key">${k}</span><span class="wi-val">${escHtml(String(v))}</span></div>`;
+    const displayName = state.network || state.servername || state.server;
+    const card = document.createElement('div');
+    card.className = 'dm-card';
+    card.innerHTML =
+      `<div class="dm-avatar" style="background:var(--accent)">🖧</div>` +
+      `<div class="dm-nick">${escHtml(displayName)}</div>`;
+    userlist.appendChild(card);
+
+    if (state.network)    rows.push(row('Network',  state.network));
+    if (state.servername) rows.push(row('Host',     state.servername));
+    if (m.software)       rows.push(row('Software', m.software));
+    if (m.created)        rows.push(row('Created',  m.created));
+    if (m.channels)       rows.push(row('Channels', m.channels));
+    if (m.local_users)    rows.push(row('Local',    m.local_users));
+    if (m.global_users)   rows.push(row('Global',   m.global_users));
+    if (m.admin?.length) {
+      const labels = ['Admin', 'Location', 'Email'];
+      m.admin.forEach((l, i) => rows.push(row(labels[i] ?? 'Admin', l)));
+    }
+    if (rows.length) {
+      const info = document.createElement('div');
+      info.className = 'dm-whois';
+      info.innerHTML = rows.join('');
+      userlist.appendChild(info);
+    }
+    return;
+  }
 
   if (isDM(state.active)) {
     const nick = state.active;

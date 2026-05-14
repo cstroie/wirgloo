@@ -57,6 +57,10 @@ type Session struct {
 	lastPong   time.Time       // wall time of the most recent PONG received
 	sendQ      chan string      // rate-limited outbound IRC line queue
 	channels   map[string]bool // channels the client is currently joined to
+	network    string          // NETWORK= value from 005, e.g. "Libera.Chat"
+	servername string          // server hostname from 004 RPL_MYINFO
+	welcome    string          // trailing text of the 001 welcome numeric
+	meta       map[string]any  // accumulated server metadata sent to the browser
 }
 
 // Registry is a thread-safe map of active sessions keyed by session ID.
@@ -75,7 +79,7 @@ func NewRegistry() *Registry {
 // called to establish one.
 func (r *Registry) New(ws *websocket.Conn) *Session {
 	id := newID()
-	s := &Session{ID: id, ws: ws, done: make(chan struct{}), channels: make(map[string]bool)}
+	s := &Session{ID: id, ws: ws, done: make(chan struct{}), channels: make(map[string]bool), meta: make(map[string]any)}
 	r.mu.Lock()
 	r.sessions[id] = s
 	r.mu.Unlock()
@@ -206,6 +210,7 @@ func (s *Session) sendLoop(conn net.Conn) {
 
 	flush := func() {
 		for tokens > 0 && len(pending) > 0 {
+			logger.L.Debug("irc send", "session", s.ID, "line", pending[0])
 			irc.WriteLine(conn, pending[0])
 			pending = pending[1:]
 			tokens--
@@ -235,6 +240,7 @@ func (s *Session) writeNow(line string) {
 	conn := s.conn
 	s.mu.Unlock()
 	if conn != nil {
+		logger.L.Debug("irc send", "session", s.ID, "line", line)
 		irc.WriteLine(conn, line)
 	}
 }
@@ -248,8 +254,14 @@ func (s *Session) SendResumed() {
 	for ch := range s.channels {
 		channels = append(channels, ch)
 	}
+	network    := s.network
+	servername := s.servername
+	welcome    := s.welcome
+	meta       := s.meta
 	s.mu.Unlock()
-	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "channels": channels})
+	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta})
+	s.SendIRC("ADMIN")
+	s.SendIRC("LUSERS")
 }
 
 // ircLoop processes every line received from the IRC server and forwards
@@ -257,8 +269,27 @@ func (s *Session) SendResumed() {
 // own goroutine and exits when the lines channel is closed — either because
 // the TCP connection dropped or because done was closed. After the loop ends
 // it sends a "disconnected" message so the browser can show a reconnect UI.
+// setMeta stores a server metadata key and broadcasts it to the browser.
+func (s *Session) setMeta(key string, value any) {
+	s.mu.Lock()
+	s.meta[key] = value
+	s.mu.Unlock()
+	s.sendWS(map[string]any{"type": "server_meta", "key": key, "value": value})
+}
+
+// appendMeta appends a value to a []string meta key and broadcasts the full slice.
+func (s *Session) appendMeta(key string, value string) {
+	s.mu.Lock()
+	existing, _ := s.meta[key].([]string)
+	updated := append(existing, value)
+	s.meta[key] = updated
+	s.mu.Unlock()
+	s.sendWS(map[string]any{"type": "server_meta", "key": key, "value": updated})
+}
+
 func (s *Session) ircLoop(lines <-chan string) {
 	for line := range lines {
+		logger.L.Debug("irc recv", "session", s.ID, "line", line)
 		msg := irc.ParseLine(line)
 		switch msg.Command {
 		case "CAP":
@@ -311,6 +342,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.mu.Lock()
 			am := s.authMethod
 			ap := s.authPass
+			s.welcome = msg.Trailing
 			s.mu.Unlock()
 			switch am {
 			case "nickserv":
@@ -322,14 +354,59 @@ func (s *Session) ircLoop(lines <-chan string) {
 					s.SendIRC("NICKSERV IDENTIFY " + ap)
 				}
 			}
-			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick, "session": s.ID})
+			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick, "session": s.ID, "welcome": msg.Trailing, "network": s.network, "servername": s.servername})
+			s.sendWS(map[string]any{"type": "motd", "text": msg.Trailing})
+			s.SendIRC("ADMIN")
+			s.SendIRC("LUSERS")
+
+		case "002": // RPL_YOURHOST — server software/version
+			s.sendWS(map[string]any{"type": "motd", "text": msg.Trailing})
+			s.setMeta("software", msg.Trailing)
+
+		case "003": // RPL_CREATED — server creation time
+			s.sendWS(map[string]any{"type": "motd", "text": msg.Trailing})
+			s.setMeta("created", msg.Trailing)
+
+		case "254": // RPL_LUSERCHANNELS
+			if len(msg.Params) >= 2 {
+				s.setMeta("channels", msg.Params[1]+" channels formed")
+			}
+
+		case "265": // RPL_LOCALUSERS
+			s.setMeta("local_users", msg.Trailing)
+
+		case "266": // RPL_GLOBALUSERS
+			s.setMeta("global_users", msg.Trailing)
+
+		case "257", "258", "259": // RPL_ADMINLOC1, RPL_ADMINLOC2, RPL_ADMINEMAIL
+			s.appendMeta("admin", msg.Trailing)
+
+		case "004": // RPL_MYINFO — server hostname + preamble line
+			if len(msg.Params) >= 2 {
+				s.mu.Lock()
+				s.servername = msg.Params[1]
+				s.mu.Unlock()
+				s.sendWS(map[string]any{"type": "servername", "value": msg.Params[1]})
+			}
+			// Display the full param list as a preamble line (trailing is usually empty for 004).
+			if len(msg.Params) > 1 {
+				s.sendWS(map[string]any{"type": "motd", "text": strings.Join(msg.Params[1:], " ")})
+			}
 
 		case "005": // RPL_ISUPPORT — server feature tokens
 			for _, token := range msg.Params[1:] { // skip target nick at Params[0]
 				if strings.HasPrefix(token, "PREFIX=") {
-					// PREFIX=(qaohv)~&@%+ — send raw value to browser
 					s.sendWS(map[string]any{"type": "isupport_prefix", "value": token[7:]})
+				} else if strings.HasPrefix(token, "NETWORK=") {
+					s.mu.Lock()
+					s.network = token[8:]
+					s.mu.Unlock()
+					s.sendWS(map[string]any{"type": "isupport_network", "value": token[8:]})
 				}
+			}
+			// Display the full token list as a preamble line.
+			if len(msg.Params) > 1 {
+				s.sendWS(map[string]any{"type": "motd", "text": strings.Join(msg.Params[1:], " ")})
 			}
 
 		case "PRIVMSG":
