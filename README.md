@@ -7,11 +7,12 @@ The server proxies IRC over a WebSocket so you can connect from any browser. A s
 ## Features
 
 **Connectivity**
-- TLS and plain IRC connections, optional TLS verification bypass (self-signed certs, hostname mismatches)
+- TLS and plain IRC connections, optional TLS verification bypass (`-noverify`, for self-signed certs and hostname mismatches)
 - Predefined network presets (Libera.Chat, OFTC, Rizon, EFnet, QuakeNet, DALnet, Undernet, IRCnet, GeekShed, RadioChat, SDF)
 - Custom server profiles saved to browser localStorage
 - WebSocket reconnection with exponential backoff — IRC session survives brief network drops
 - Transparent reconnect after server restart: channels are re-joined, messages preserved
+- Offline channel placeholders in the sidebar — click to rejoin, topic and info printed on entry
 
 **Authentication**
 - SASL PLAIN (full CAP negotiation)
@@ -25,6 +26,7 @@ The server proxies IRC over a WebSocket so you can connect from any browser. A s
 - Nick mentions highlighted in their assigned colour
 - Chat log persisted per server/channel in localStorage, replayed on reconnect with session-break marker
 - Previously joined channels remembered and shown as offline placeholders on reconnect
+- Join/part/quit/kick events shown with directional arrows (`→` / `←`) in the nick column
 
 **User list**
 - IRCv3 `multi-prefix` CAP — all privilege levels shown per nick
@@ -36,6 +38,11 @@ The server proxies IRC over a WebSocket so you can connect from any browser. A s
 - WHOIS fetched automatically when opening a DM or when someone messages you first
 - User info card: real name, host, server, idle time, channels with prefix badges
 - Identity badges: 🔒 Secure · ✓ Identified · ⚡ IRCop · 🤖 Bot · ⏾ Away
+- Away status tracked separately from WHOIS; `away_status` message clears the indicator on return
+
+**Channel list (`/list`)**
+- Sortable by name, user count, or topic
+- Click any entry to join directly
 
 **Commands**
 `/join` `/part` `/msg` `/me` `/nick` `/topic` `/kick` `/ban` `/mode`
@@ -46,7 +53,6 @@ The server proxies IRC over a WebSocket so you can connect from any browser. A s
 - Auto light/dark theme via `prefers-color-scheme`
 - JetBrains Mono font
 - Nick colours derived from a hash (consistent across sessions)
-- Channel list sortable by name, user count, or topic
 - Emoji icons per entry type in sidebar (server, channel, DM, list)
 - Rate-limited outbound IRC (token bucket, 3 lines/sec)
 
