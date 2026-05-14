@@ -379,7 +379,8 @@ function handle(msg) {
       state.serverMeta = {};
       updateLagDisplay(null);
       scheduleLagPing(3000); // initial measurement ~3 s after connect
-      applyServerMeta(msg.network, msg.servername, msg.welcome);
+      applyServerMeta(null, null, msg.welcome);
+      if (msg.welcome) appendMsg('*server*', { type: 'motd', nick: '-', text: msg.welcome });
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected to ${state.server} as ${msg.nick}` });
       requestNotifyPermission();
       restoreSavedChannels(state.server);
