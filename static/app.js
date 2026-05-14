@@ -16,6 +16,7 @@ const state = {
   ignored: new Set(),    // client-side ignored nicks
   listItems: [],         // raw {channel, count, topic} from LIST
   listSort: 'users',     // 'name' | 'users' | 'topic'
+  dmOriginChannel: null, // channel active when a DM was opened from the user list
   // prefix support — populated from server 005 PREFIX token
   prefixRank:  {'~':0,'&':1,'@':2,'%':3,'+':4}, // symbol → rank (lower = higher privilege)
   prefixClass: {'~':'owner','&':'admin','@':'op','%':'halfop','+':'voice'},
@@ -646,6 +647,7 @@ function setActive(target) {
   if (!target || !state.channels.has(target)) return;
   openPanel(null); // close any open mobile panel
   state.active = target;
+  state.dmOriginChannel = null;
   const ch = state.channels.get(target);
   ch.unread  = 0;
   ch.mention = false;
@@ -896,8 +898,9 @@ function isDM(target) {
   return !!target && !target.startsWith('#') && target !== '*server*' && target !== '*list*';
 }
 
-function openDM(nick) {
+function openDM(nick, fromChannel) {
   ensureChannel(nick);
+  if (fromChannel) state.dmOriginChannel = fromChannel;
   setActive(nick);
   saveDMs(state.server);
   // auto-fetch WHOIS so the DM card shows badges immediately
@@ -936,7 +939,10 @@ function parseWhois(lines) {
 
 function renderUserlist() {
   const header = $('userlist-header');
+  const footer = $('userlist-footer');
   userlist.innerHTML = '';
+  footer.innerHTML = '';
+  footer.classList.add('hidden');
 
   if (isDM(state.active)) {
     const nick = state.active;
@@ -962,11 +968,7 @@ function renderUserlist() {
         ${w?.bot ? '🤖' : escHtml(nick[0].toUpperCase())}
       </div>
       <div class="dm-nick" style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</div>
-      ${badges.length ? `<div class="dm-badges">${badges.join('')}</div>` : ''}
-      <div class="dm-actions">
-        <button class="dm-action-btn" id="whois-btn">⊕ Info</button>
-        <button class="dm-action-btn danger" id="close-dm-btn">✕ Close</button>
-      </div>`;
+      ${badges.length ? `<div class="dm-badges">${badges.join('')}</div>` : ''}`;
 
     if (w && (w.realname || w.host || w.server || w.idle || w.channels.length)) {
       const info = document.createElement('div');
@@ -995,12 +997,28 @@ function renderUserlist() {
       card.appendChild(info);
     }
 
-    card.querySelector('#whois-btn').addEventListener('click', () => {
+    const chan = state.dmOriginChannel;
+    footer.innerHTML =
+      `<button id="whois-btn">⊕ Info</button>` +
+      `<button id="close-dm-btn" class="danger">✕ Close</button>` +
+      (chan ? `<div class="userlist-footer-sep"></div>` +
+              `<button id="uf-op">● Op</button>` +
+              `<button id="uf-deop">○ DeOp</button>` +
+              `<button id="uf-ban" class="danger">⊘ Ban</button>` +
+              `<button id="uf-kick" class="danger">✕ Kick</button>` : '');
+    footer.classList.remove('hidden');
+    footer.querySelector('#whois-btn').addEventListener('click', () => {
       state.whoisCache.delete(nick);
       state.pendingWhois = nick;
       send({ type: 'raw', line: `WHOIS ${nick}` });
     });
-    card.querySelector('#close-dm-btn').addEventListener('click', () => removeChannel(nick));
+    footer.querySelector('#close-dm-btn').addEventListener('click', () => removeChannel(nick));
+    if (chan) {
+      footer.querySelector('#uf-op').addEventListener('click',   () => send({ type: 'raw', line: `MODE ${chan} +o ${nick}` }));
+      footer.querySelector('#uf-deop').addEventListener('click', () => send({ type: 'raw', line: `MODE ${chan} -o ${nick}` }));
+      footer.querySelector('#uf-ban').addEventListener('click',  () => send({ type: 'raw', line: `MODE ${chan} +b ${nick}!*@*` }));
+      footer.querySelector('#uf-kick').addEventListener('click', () => send({ type: 'raw', line: `KICK ${chan} ${nick} :Kicked` }));
+    }
 
     userlist.appendChild(card);
     return;
@@ -1016,8 +1034,8 @@ function renderUserlist() {
     const bestRank = p => Math.min(...([...p].map(c => state.prefixRank[c] ?? 99)), 99);
     return bestRank(pa) - bestRank(pb) || a.toLowerCase().localeCompare(b.toLowerCase());
   });
+  const originChannel = state.active;
   sorted.forEach(([nick, prefix]) => {
-    // highest-privilege char determines the CSS class
     const topChar = [...prefix].sort((a, b) => (state.prefixRank[a]??99) - (state.prefixRank[b]??99))[0];
     const cls = topChar ? (state.prefixClass[topChar] || '') : '';
     const el = document.createElement('div');
@@ -1028,12 +1046,13 @@ function renderUserlist() {
       : `<span class="user-prefix-none"> </span>`;
     const cachedLines = state.whoisCache.get(nick) || [];
     const isAway = cachedLines.some(l => l.startsWith('away:'));
-    el.innerHTML = `<span class="user-nick">${prefixHtml}<span style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</span>${isAway ? '<span class="user-away" title="Away">⏾</span>' : ''}</span>` +
-      (nick !== state.nick ? `<button class="dm-btn" title="Message ${escHtml(nick)}">✉</button>` : '');
-    el.querySelector('.dm-btn')?.addEventListener('click', e => {
-      e.stopPropagation();
-      openDM(nick);
-    });
+    const badge = isAway ? `<span class="user-status away" title="Away">⏾</span>`
+                         : `<span class="user-status"></span>`;
+    el.innerHTML = `<span class="user-nick">${prefixHtml}<span style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</span></span>${badge}`;
+    if (nick !== state.nick) {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => openDM(nick, originChannel));
+    }
     userlist.appendChild(el);
   });
 }
@@ -1074,10 +1093,34 @@ $('userlist-toggle').addEventListener('click', () => {
 });
 $('send-btn').addEventListener('click', sendInput);
 input.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { sendInput(); tabComplete.reset(); }
+  if (e.key === 'Enter') { sendInput(); tabComplete.reset(); inputHistory.reset(); }
   else if (e.key === 'Tab') { e.preventDefault(); tabComplete.next(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); inputHistory.prev(); tabComplete.reset(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); inputHistory.next(); tabComplete.reset(); }
   else if (e.key !== 'Shift') tabComplete.reset();
 });
+
+const inputHistory = (() => {
+  const hist = [];   // oldest-first list of sent lines
+  let pos = -1;      // -1 = not browsing; 0..hist.length-1 = browsing
+  let draft = '';    // saved current input while browsing
+
+  return {
+    push(val) { if (val && hist[hist.length - 1] !== val) hist.push(val); },
+    prev() {
+      if (hist.length === 0) return;
+      if (pos === -1) { draft = input.value; pos = hist.length; }
+      if (pos > 0) { pos--; input.value = hist[pos]; }
+    },
+    next() {
+      if (pos === -1) return;
+      pos++;
+      if (pos >= hist.length) { pos = -1; input.value = draft; }
+      else { input.value = hist[pos]; }
+    },
+    reset() { pos = -1; draft = ''; },
+  };
+})();
 
 const tabComplete = (() => {
   let candidates = [], idx = -1, prefix = '', stub = '';
@@ -1110,6 +1153,7 @@ const tabComplete = (() => {
 function sendInput() {
   const val = input.value.trim();
   if (!val || !state.active) return;
+  inputHistory.push(val);
   input.value = '';
 
   if (val.startsWith('/')) {

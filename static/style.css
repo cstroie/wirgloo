@@ -338,6 +338,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   padding: 4px 8px 4px 14px; color: var(--text-dim); font-size: 0.85rem;
   border-radius: 5px; margin: 1px 6px; transition: background 0.1s, color 0.1s;
 }
+.user-item { cursor: default; }
 .user-item:hover { background: var(--bg3); color: var(--text); }
 .user-item.owner  { color: #e05c5c; }
 .user-item.admin  { color: #e07c3a; }
@@ -347,14 +348,8 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .user-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; display: flex; align-items: center; gap: 2px; }
 .user-prefix { font-weight: bold; flex-shrink: 0; min-width: 0.9em; }
 .user-prefix-none { flex-shrink: 0; min-width: 0.9em; }
-.user-away { color: var(--text-dim); font-size: 0.75rem; flex-shrink: 0; }
-.dm-btn {
-  background: none; border: none; color: var(--text-dim); cursor: pointer;
-  font-size: 0.8rem; padding: 0 3px; opacity: 0; transition: opacity 0.1s;
-  flex-shrink: 0;
-}
-.user-item:hover .dm-btn { opacity: 1; }
-.dm-btn:hover { color: var(--accent); }
+.user-status { font-size: 0.75rem; flex-shrink: 0; min-width: 1em; text-align: right; }
+.user-status.away { color: var(--text-dim); }
 
 .dm-card {
   display: flex; flex-direction: column; align-items: center;
@@ -370,16 +365,19 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   font-weight: bold; font-size: 1rem;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
 }
-.dm-actions { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 4px; }
-.dm-action-btn {
-  width: 100%; padding: 6px 10px;
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text-dim); font-family: var(--font-mono); font-size: 0.78rem;
-  cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s;
-  text-align: center;
+#userlist-footer {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 8px 8px 12px; border-top: 1px solid var(--border);
 }
-.dm-action-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-bg); }
-.dm-action-btn.danger:hover { color: var(--error); border-color: var(--error); background: rgba(248,113,113,0.08); }
+#userlist-footer button {
+  background: transparent; border: none; border-radius: 6px;
+  color: var(--text-dim); font-family: var(--font-mono); font-size: 0.8rem;
+  padding: 7px 10px; cursor: pointer; transition: color 0.15s, background 0.15s;
+  text-align: left;
+}
+#userlist-footer button:hover { color: var(--text); background: var(--bg3); }
+#userlist-footer button.danger:hover { color: var(--error) !important; background: rgba(248,113,113,0.1) !important; }
+.userlist-footer-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .dm-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 2px; }
 .user-badge {
   font-size: 0.68rem; padding: 2px 7px; border-radius: 10px;
