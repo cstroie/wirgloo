@@ -28,6 +28,9 @@ import (
 	"wirgloo/logger"
 )
 
+// AppVersion is set by main at startup to the build-time version string.
+var AppVersion = "dev"
+
 const wsReconnectWindow = 30 * time.Minute // idle WS window before the IRC connection is torn down
 const bufferMax         = 500              // max IRC messages buffered while the WS is detached
 const pingInterval      = 90 * time.Second // how often to send a client-initiated PING to the server
@@ -345,7 +348,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 				continue
 			} else if strings.HasPrefix(text, "\x01VERSION\x01") {
 				// Identify ourselves; the version string is intentionally minimal.
-				s.writeNow("NOTICE " + msg.Nick + " :\x01VERSION wirgloo\x01")
+				s.writeNow("NOTICE " + msg.Nick + " :\x01VERSION wirgloo " + AppVersion + "\x01")
 				continue
 			} else if strings.HasPrefix(text, "\x01") && strings.HasSuffix(text, "\x01") {
 				// Unrecognised CTCP request — ignore rather than forward to the UI.

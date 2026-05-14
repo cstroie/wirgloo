@@ -12,6 +12,7 @@ package main
 import (
 	"embed"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -43,9 +44,15 @@ func main() {
 	}
 	logger.Init(level, *logJSON)
 
+	session.AppVersion = version
+
 	reg := session.NewRegistry()
 
 	http.HandleFunc("/ws", ws.Handler(reg))
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"name":"wirgloo","version":%q}`, version)
+	})
 
 	if *dev {
 		// Serve directly from disk so edits are visible without restarting.
