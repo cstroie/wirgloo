@@ -361,7 +361,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 					s.SendIRC("NICKSERV IDENTIFY " + ap)
 				}
 			}
-			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick, "session": s.ID, "welcome": msg.Trailing, "network": s.network, "servername": s.servername})
+			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick, "session": s.ID, "welcome": msg.Trailing})
 			s.sendWS(map[string]any{"type": "motd", "text": msg.Trailing})
 			s.SendIRC("ADMIN")
 			s.SendIRC("LUSERS")
