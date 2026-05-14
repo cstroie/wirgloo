@@ -510,49 +510,49 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if len(msg.Params) < 4 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s (%s@%s): %s", msg.Params[1], msg.Params[2], msg.Params[3], msg.Trailing)})
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "user", "ident": msg.Params[2], "host": msg.Params[3], "realname": msg.Trailing})
 
 		case "312": // RPL_WHOISSERVER
 			if len(msg.Params) < 3 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s via %s (%s)", msg.Params[1], msg.Params[2], msg.Trailing)})
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "server", "server": msg.Params[2], "location": msg.Trailing})
 
 		case "313": // RPL_WHOISOPERATOR
 			if len(msg.Params) < 2 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s is an IRC operator", msg.Params[1])})
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "ircop"})
 
 		case "317": // RPL_WHOISIDLE
 			if len(msg.Params) < 3 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s idle: %ss", msg.Params[1], msg.Params[2])})
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "idle", "seconds": msg.Params[2]})
 
 		case "318": // RPL_ENDOFWHOIS
 			if len(msg.Params) < 2 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("— end of whois for %s", msg.Params[1])})
+			s.sendWS(map[string]any{"type": "whois_end", "nick": msg.Params[1]})
 
 		case "319": // RPL_WHOISCHANNELS
 			if len(msg.Params) < 2 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s in: %s", msg.Params[1], msg.Trailing)})
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "channels", "channels": strings.Fields(msg.Trailing)})
 
 		case "330": // RPL_WHOISACCOUNT
 			if len(msg.Params) < 3 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s logged in as %s", msg.Params[1], msg.Params[2])})
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "account", "account": msg.Params[2]})
 
 		case "671": // RPL_WHOISSECURE
 			if len(msg.Params) < 2 {
 				continue
 			}
-			s.sendWS(map[string]any{"type": "whois", "text": fmt.Sprintf("%s is using a secure connection", msg.Params[1])})
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "secure"})
 
 		case "375", "372": // RPL_MOTDSTART, RPL_MOTD
 			text := strings.TrimPrefix(msg.Trailing, "- ")

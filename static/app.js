@@ -11,7 +11,7 @@ const state = {
   // Map<target, {messages: [], nicks: Set, unread: number, mention: boolean}>
   channels: new Map(),
   active: null,
-  whoisCache: new Map(), // nick → string[]
+  whoisUsers: new Map(), // nick → structured whois data
   pendingWhois: null,
   ignored: new Set(),    // client-side ignored nicks
   listItems: [],         // raw {channel, count, topic} from LIST
@@ -456,7 +456,7 @@ function handle(msg) {
       const target = msg.target.startsWith('#') ? msg.target : msg.from;
       ensureChannel(target);
       // auto-fetch WHOIS when someone opens a DM with us
-      if (target === msg.from && !state.whoisCache.has(msg.from) && state.pendingWhois !== msg.from) {
+      if (target === msg.from && !state.whoisUsers.has(msg.from) && state.pendingWhois !== msg.from) {
         state.pendingWhois = msg.from;
         send({ type: 'raw', line: `WHOIS ${msg.from}` });
       }
@@ -569,34 +569,38 @@ function handle(msg) {
       renderUserlist();
       break;
 
-    case 'whois': {
-      appendMsg('*server*', { type: 'whois', nick: '*', text: msg.text });
-      if (state.active !== '*server*') bumpUnread('*server*', false);
-      // feed whois cache for any pending nick
-      if (state.pendingWhois) {
-        const lines = state.whoisCache.get(state.pendingWhois) || [];
-        lines.push(msg.text);
-        state.whoisCache.set(state.pendingWhois, lines);
-        if (isDM(state.active) && state.active === state.pendingWhois) renderUserlist();
-        if (msg.text.startsWith('— end of whois')) state.pendingWhois = null;
+    case 'whois_data': {
+      const w = state.whoisUsers.get(msg.nick) || { realname:'', ident:'', host:'', server:'', location:'', idleSecs:0, account:'', channels:[], secure:false, ircop:false, bot:false, away:false, awayMsg:'' };
+      switch (msg.field) {
+        case 'user':     w.ident = msg.ident; w.host = msg.host; w.realname = msg.realname;
+                         w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
+                         break;
+        case 'server':   w.server = msg.server; w.location = msg.location; break;
+        case 'ircop':    w.ircop = true; break;
+        case 'idle':     w.idleSecs = parseInt(msg.seconds) || 0; break;
+        case 'channels': w.channels = msg.channels; break;
+        case 'account':  w.account = msg.account;
+                         w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
+                         break;
+        case 'secure':   w.secure = true; break;
       }
+      state.whoisUsers.set(msg.nick, w);
+      if (state.active === msg.nick) { updateDMTopic(msg.nick); renderUserlist(); }
       break;
     }
 
+    case 'whois_end':
+      if (state.pendingWhois === msg.nick) state.pendingWhois = null;
+      if (state.active === msg.nick) renderUserlist();
+      break;
+
     case 'away': {
       const isBack = !msg.text;
-      // update whois cache: remove old away line, add new one if going away
-      const lines = state.whoisCache.get(msg.nick) || [];
-      const filtered = lines.filter(l => !l.startsWith('away:'));
-      if (isBack) {
-        if (lines.length) state.whoisCache.set(msg.nick, filtered);
-      } else {
-        filtered.push('away: ' + msg.text);
-        state.whoisCache.set(msg.nick, filtered);
-        // only show inline notice for 301 (when we messaged them); away-notify is silent
-        if (msg.source === '301')
-          appendMsg(state.active || '*server*', { type: 'system', nick: '--', text: `${msg.nick} is away: ${msg.text}` });
-      }
+      const w = state.whoisUsers.get(msg.nick) || {};
+      w.away = !isBack; w.awayMsg = isBack ? '' : msg.text;
+      state.whoisUsers.set(msg.nick, w);
+      if (!isBack && msg.source === '301')
+        appendMsg(state.active || '*server*', { type: 'system', nick: '--', text: `${msg.nick} is away: ${msg.text}` });
       renderUserlist();
       break;
     }
@@ -663,10 +667,11 @@ function handle(msg) {
           const nick = bangIdx !== -1 ? full.slice(0, bangIdx) : full;
           ch._namesAccum.set(nick, prefix);
           if (bangIdx !== -1) {
-            const host = full.slice(bangIdx + 1); // user@host
-            if (!state.whoisCache.has(nick)) state.whoisCache.set(nick, []);
-            const lines = state.whoisCache.get(nick);
-            if (!lines.some(l => l.startsWith('host:'))) lines.push('host: ' + host);
+            const hostStr = full.slice(bangIdx + 1); // ident@host
+            if (!state.whoisUsers.has(nick)) {
+              const [ident, host] = hostStr.split('@');
+              state.whoisUsers.set(nick, { realname:'', ident: ident||'', host: host||hostStr, server:'', location:'', idleSecs:0, account:'', channels:[], secure:false, ircop:false, bot:false, away:false, awayMsg:'' });
+            }
           }
         });
       }
@@ -753,7 +758,8 @@ function setActive(target) {
   document.getElementById('userlist-panel').classList.toggle('wide', target === '*server*');
   renderUserlist();
   targetName.textContent = target === '*server*' ? (state.servername || state.server) : target;
-  topicText.textContent = ch.topic || '';
+  if (isDM(target)) updateDMTopic(target);
+  else topicText.textContent = ch.topic || '';
   updateTitle();
   renderListBar();
   updateInputState();
@@ -1008,43 +1014,28 @@ function isDM(target) {
   return !!target && !target.startsWith('#') && target !== '*server*' && target !== '*list*';
 }
 
+function updateDMTopic(nick) {
+  const u = state.whoisUsers?.get(nick);
+  const host = u ? (u.ident ? `${u.ident}@${u.host}` : u.host) : '';
+  topicText.textContent = u?.realname ? `${u.realname}  ${host}` : (host || '');
+}
+
 function openDM(nick, fromChannel) {
   ensureChannel(nick);
   setActive(nick);
   if (fromChannel) { state.dmOriginChannel = fromChannel; renderUserlist(); }
   saveDMs(state.server);
   // auto-fetch WHOIS so the DM card shows badges immediately
-  if (!state.whoisCache.has(nick)) {
+  if (!state.whoisUsers.has(nick) || !state.whoisUsers.get(nick).realname) {
     state.pendingWhois = nick;
     send({ type: 'raw', line: `WHOIS ${nick}` });
   }
 }
 
-function parseWhois(lines) {
-  const w = { realname:'', host:'', ident:'', server:'', location:'', idle:'',
-               account:'', channels:[], secure:false, ircop:false, bot:false,
-               away:false, awayMsg:'' };
-  for (const l of lines) {
-    let m;
-    if ((m = l.match(/^\S+ \((.+?)@(.+?)\): (.+)/)))
-      { w.ident = m[1]; w.host = m[2]; w.realname = m[3]; }
-    else if ((m = l.match(/in: (.+)/)))
-      w.channels = m[1].trim().split(/\s+/);
-    else if ((m = l.match(/via (\S+) \((.+)\)/)))
-      { w.server = m[1]; w.location = m[2]; }
-    else if ((m = l.match(/idle ([^,]+)/)))
-      w.idle = m[1];
-    else if ((m = l.match(/logged in as (\S+)/)))
-      w.account = m[1];
-    else if ((m = l.match(/^host: (.+?)@(.+)/)))
-      { w.ident = m[1]; w.host = m[2]; }
-    else if ((m = l.match(/^away: (.+)/)))
-      { w.away = true; w.awayMsg = m[1]; }
-    else if (l.includes('secure connection'))  w.secure = true;
-    else if (l.includes('IRC operator'))       w.ircop  = true;
-  }
-  w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
-  return w;
+function fmtIdle(secs) {
+  if (secs < 60)   return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs/60)}m ${secs%60}s`;
+  return `${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m`;
 }
 
 function renderUserlist() {
@@ -1106,8 +1097,7 @@ function renderUserlist() {
     const card = document.createElement('div');
     card.className = 'dm-card';
 
-    const lines = state.whoisCache.get(nick) || [];
-    const w = lines.length ? parseWhois(lines) : null;
+    const w = state.whoisUsers.get(nick) || null;
 
     // badges
     const badges = [];
@@ -1124,16 +1114,16 @@ function renderUserlist() {
       <div class="dm-nick" style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</div>
       ${badges.length ? `<div class="dm-badges">${badges.join('')}</div>` : ''}`;
 
-    if (w && (w.realname || w.host || w.server || w.idle || w.channels.length)) {
+    if (w && (w.realname || w.host || w.server || w.idleSecs || w.channels.length)) {
       const info = document.createElement('div');
       info.className = 'dm-whois';
       const rows = [];
       if (w.away && w.awayMsg) rows.push(`<div class="wi-row"><span class="wi-key">Away</span><span class="wi-val wi-away">${escHtml(w.awayMsg)}</span></div>`);
       if (w.realname) rows.push(`<div class="wi-row"><span class="wi-key">Name</span><span class="wi-val">${escHtml(w.realname)}</span></div>`);
       if (w.account)  rows.push(`<div class="wi-row"><span class="wi-key">Account</span><span class="wi-val">${escHtml(w.account)}</span></div>`);
-      if (w.host)     rows.push(`<div class="wi-row"><span class="wi-key">Host</span><span class="wi-val">${escHtml(w.ident+'@'+w.host)}</span></div>`);
+      if (w.host)     rows.push(`<div class="wi-row"><span class="wi-key">Host</span><span class="wi-val">${escHtml((w.ident ? w.ident+'@' : '')+w.host)}</span></div>`);
       if (w.server)   rows.push(`<div class="wi-row"><span class="wi-key">Server</span><span class="wi-val">${escHtml(w.server)}${w.location ? ' · '+escHtml(w.location) : ''}</span></div>`);
-      if (w.idle)     rows.push(`<div class="wi-row"><span class="wi-key">Idle</span><span class="wi-val">${escHtml(w.idle)}</span></div>`);
+      if (w.idleSecs) rows.push(`<div class="wi-row"><span class="wi-key">Idle</span><span class="wi-val">${escHtml(fmtIdle(w.idleSecs))}</span></div>`);
       if (w.channels.length) {
         const PREFIX_LABEL = { '~': ['owner','~'], '&': ['admin','&'], '@': ['op','@'], '%': ['half-op','%'], '+': ['voice','+'] };
         const chips = w.channels.map(c => {
@@ -1169,7 +1159,7 @@ function renderUserlist() {
       `<button id="close-dm-btn" class="danger">✕ Close</button>`;
     footer.classList.remove('hidden');
     footer.querySelector('#whois-btn').addEventListener('click', () => {
-      state.whoisCache.delete(nick);
+      state.whoisUsers.delete(nick);
       state.pendingWhois = nick;
       send({ type: 'raw', line: `WHOIS ${nick}` });
     });
@@ -1220,8 +1210,7 @@ function renderUserlist() {
     const prefixHtml = topChar
       ? `<span class="user-prefix">${escHtml(topChar)}</span>`
       : `<span class="user-prefix-none"> </span>`;
-    const cachedLines = state.whoisCache.get(nick) || [];
-    const isAway = cachedLines.some(l => l.startsWith('away:'));
+    const isAway = state.whoisUsers.get(nick)?.away || false;
     const badge = isAway ? `<span class="user-status away" title="Away">⏾</span>`
                          : `<span class="user-status"></span>`;
     el.innerHTML = `<span class="user-nick">${prefixHtml}<span style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</span></span>${badge}`;
