@@ -30,9 +30,9 @@ let reconnectDelay = 1000;
 let lagPingPending = false;
 let lagTimer       = null;
 
-function scheduleLagPing() {
+function scheduleLagPing(initialDelay) {
   clearTimeout(lagTimer);
-  const delay = (60 + Math.random() * 240) * 1000; // 1–5 min random
+  const delay = initialDelay ?? (60 + Math.random() * 240) * 1000; // 1–5 min random
   lagTimer = setTimeout(() => {
     if (state.connected && state.ws) {
       lagPingPending = true;
@@ -45,10 +45,14 @@ function scheduleLagPing() {
 function updateLagDisplay(ms) {
   const el = $('lag-display');
   if (!el) return;
+  if (ms == null) {
+    el.textContent = 'ping: -- ms';
+    el.style.color = '';
+    return;
+  }
   const color = ms < 100 ? 'var(--join)' : ms < 300 ? '#f59e0b' : 'var(--error)';
-  el.textContent = `⌛ ${ms} ms`;
+  el.textContent = `ping: ${ms} ms`;
   el.style.color = color;
-  el.classList.remove('hidden');
 }
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
@@ -328,9 +332,9 @@ function handle(msg) {
     }
 
     case 'server_pong':
+      updateLagDisplay(msg.ms);
       if (lagPingPending) {
         lagPingPending = false;
-        updateLagDisplay(msg.ms);
       } else {
         appendMsg('*server*', { type: 'notice', nick: state.servername || state.server, text: `PING reply: ${msg.ms} ms`, ts: Date.now() / 1000 });
         if (state.active !== '*server*') bumpUnread('*server*', false);
@@ -373,7 +377,8 @@ function handle(msg) {
       reconnectDelay = 1000;
       myNick.textContent = msg.nick;
       state.serverMeta = {};
-      scheduleLagPing();
+      updateLagDisplay(null);
+      scheduleLagPing(3000); // initial measurement ~3 s after connect
       applyServerMeta(msg.network, msg.servername, msg.welcome);
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected to ${state.server} as ${msg.nick}` });
       requestNotifyPermission();
@@ -397,7 +402,8 @@ function handle(msg) {
       state.server = localStorage.getItem('wirgloo_session_server') || '';
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
-      scheduleLagPing();
+      updateLagDisplay(null);
+      scheduleLagPing(3000);
       if (msg.meta) state.serverMeta = msg.meta;
       applyServerMeta(msg.network, msg.servername, msg.welcome);
       restoreSavedChannels(state.server);
@@ -469,9 +475,15 @@ function handle(msg) {
 
     case 'join':
       if (msg.nick === state.nick) {
+        const firstJoin = !state.channels.has(msg.channel);
         ensureChannel(msg.channel);
         const joiningCh = state.channels.get(msg.channel);
         if (joiningCh) joiningCh.offline = false;
+        if (firstJoin) {
+          if (!state.joiningChannels) state.joiningChannels = new Set();
+          state.joiningChannels.add(msg.channel);
+          appendMsg(msg.channel, { type: 'system', nick: '', text: `Now talking on ${msg.channel}` });
+        }
         setActive(msg.channel);
         saveChannels(state.server); saveDMs(state.server);
       } else {
@@ -621,6 +633,17 @@ function handle(msg) {
       if (ch) {
         ch.topic = msg.text;
         if (msg.channel === state.active) topicText.textContent = msg.text;
+        if (state.joiningChannels?.has(msg.channel) && msg.text) {
+          appendMsg(msg.channel, { type: 'system', nick: '', text: `Topic for ${msg.channel} is: ${msg.text}` });
+        }
+      }
+      break;
+    }
+
+    case 'topic_meta': {
+      if (state.joiningChannels?.has(msg.channel)) {
+        appendMsg(msg.channel, { type: 'system', nick: '', text: `Topic set by ${msg.setter} (${msg.time})` });
+        state.joiningChannels.delete(msg.channel);
       }
       break;
     }
@@ -1060,7 +1083,7 @@ function renderUserlist() {
     }
 
     footer.innerHTML =
-      `<button id="srv-ping">⌛ Ping</button>` +
+      `<button id="srv-ping">↔ Ping</button>` +
       `<button id="srv-help">? Help</button>`;
     footer.classList.remove('hidden');
     footer.querySelector('#srv-ping').addEventListener('click', () => {
@@ -1138,7 +1161,7 @@ function renderUserlist() {
       (state.ignored.has(nick.toLowerCase()) ? `<button id="uf-ignore">⊕ UnIgnore</button>` : `<button id="uf-ignore">⊖ Ignore</button>`) +
       `<div class="userlist-footer-sep"></div>` +
       `<button id="whois-btn">⊕ Info</button>` +
-      `<button id="ping-btn">⌛ Ping</button>` +
+      `<button id="ping-btn">↔ Ping</button>` +
       `<button id="version-btn">© Version</button>` +
       `<button id="close-dm-btn" class="danger">✕ Close</button>`;
     footer.classList.remove('hidden');
@@ -1554,7 +1577,7 @@ function onConnectFailed(reason) {
 
 function onDisconnect(reason) {
   clearTimeout(lagTimer);
-  $('lag-display').classList.add('hidden');
+  updateLagDisplay(null);
   state.connected = false;
   state.sessionId = null;
   history.replaceState(null, '', location.pathname);

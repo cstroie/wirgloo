@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -574,6 +575,21 @@ func (s *Session) ircLoop(lines <-chan string) {
 			channel := msg.Params[1]
 			logger.L.Debug("TOPIC", "session", s.ID, "channel", channel)
 			s.sendWS(map[string]any{"type": "topic", "channel": channel, "text": msg.Trailing})
+
+		case "333": // RPL_TOPICWHOTIME
+			if len(msg.Params) < 4 {
+				continue
+			}
+			channel := msg.Params[1]
+			setter := msg.Params[2]
+			tsStr := msg.Params[3]
+			var timeStr string
+			if ts, err := strconv.ParseInt(tsStr, 10, 64); err == nil {
+				timeStr = time.Unix(ts, 0).Format("Mon Jan 02 15:04:05 2006")
+			} else {
+				timeStr = tsStr
+			}
+			s.sendWS(map[string]any{"type": "topic_meta", "channel": channel, "setter": setter, "time": timeStr})
 
 		case "353": // RPL_NAMREPLY — nick list chunk for a channel
 			if len(msg.Params) < 3 {
