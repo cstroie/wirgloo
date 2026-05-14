@@ -900,8 +900,8 @@ function isDM(target) {
 
 function openDM(nick, fromChannel) {
   ensureChannel(nick);
-  if (fromChannel) state.dmOriginChannel = fromChannel;
   setActive(nick);
+  if (fromChannel) { state.dmOriginChannel = fromChannel; renderUserlist(); }
   saveDMs(state.server);
   // auto-fetch WHOIS so the DM card shows badges immediately
   if (!state.whoisCache.has(nick)) {
@@ -976,6 +976,7 @@ function renderUserlist() {
       const rows = [];
       if (w.away && w.awayMsg) rows.push(`<div class="wi-row"><span class="wi-key">Away</span><span class="wi-val wi-away">${escHtml(w.awayMsg)}</span></div>`);
       if (w.realname) rows.push(`<div class="wi-row"><span class="wi-key">Name</span><span class="wi-val">${escHtml(w.realname)}</span></div>`);
+      if (w.account)  rows.push(`<div class="wi-row"><span class="wi-key">Account</span><span class="wi-val">${escHtml(w.account)}</span></div>`);
       if (w.host)     rows.push(`<div class="wi-row"><span class="wi-key">Host</span><span class="wi-val">${escHtml(w.ident+'@'+w.host)}</span></div>`);
       if (w.server)   rows.push(`<div class="wi-row"><span class="wi-key">Server</span><span class="wi-val">${escHtml(w.server)}${w.location ? ' · '+escHtml(w.location) : ''}</span></div>`);
       if (w.idle)     rows.push(`<div class="wi-row"><span class="wi-key">Idle</span><span class="wi-val">${escHtml(w.idle)}</span></div>`);
