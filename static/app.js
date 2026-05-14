@@ -635,6 +635,8 @@ function handle(msg) {
         if (msg.channel === state.active) topicText.textContent = msg.text;
         if (state.joiningChannels?.has(msg.channel) && msg.text) {
           appendMsg(msg.channel, { type: 'system', nick: '', text: `Topic for ${msg.channel} is: ${msg.text}` });
+        } else if (msg.nick) {
+          appendMsg(msg.channel, { type: 'system', nick: '', text: `${msg.nick} changed the topic to: ${msg.text}` });
         }
       }
       break;

@@ -473,6 +473,12 @@ func (s *Session) ircLoop(lines <-chan string) {
 			}
 			s.sendWS(map[string]any{"type": "part", "nick": msg.Nick, "channel": channel})
 
+		case "TOPIC":
+			if len(msg.Params) > 0 {
+				channel := msg.Params[0]
+				s.sendWS(map[string]any{"type": "topic", "channel": channel, "text": msg.Trailing, "nick": msg.Nick})
+			}
+
 		case "NICK":
 			newNick := msg.Trailing
 			if newNick == "" && len(msg.Params) > 0 {
