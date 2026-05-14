@@ -1685,9 +1685,9 @@ function highlightNicks(html, nicks) {
 
 // IRC mIRC color palette (indices 0-15)
 const MIRC_COLORS = [
-  '#ffffff','#000000','#00007f','#009300','#ff0000','#7f0000',
-  '#9c009c','#fc7f00','#ffff00','#00fc00','#009393','#00ffff',
-  '#0000fc','#ff00ff','#7f7f7f','#d2d2d2',
+  '#ffffff','#000000','#00007f','#009300','#cc3333','#7f0000',
+  '#9c009c','#cc6a10','#b8b820','#20b820','#009393','#20b8b8',
+  '#3333cc','#cc33cc','#7f7f7f','#d2d2d2',
 ];
 
 function applyMarkdown(s) {
@@ -1706,13 +1706,14 @@ function applyMarkdown(s) {
 }
 
 function renderText(raw) {
+  const hasIRC = /[\x02\x03\x0f\x11\x1d\x1e\x1f]/.test(raw);
   let bold=false, italic=false, under=false, strike=false, mono=false;
   let fg=null, bg=null;
   let out='', buf='', i=0;
 
   const flush = () => {
     if (!buf) return;
-    let s = linkify(applyMarkdown(escHtml(buf)));
+    let s = linkify(hasIRC ? escHtml(buf) : applyMarkdown(escHtml(buf)));
     const st = [];
     if (bold)   st.push('font-weight:bold');
     if (italic) st.push('font-style:italic');
