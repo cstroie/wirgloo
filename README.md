@@ -1,137 +1,196 @@
 # wirgloo
 
-A self-hosted web IRC client written in Go.
+> Self-hosted IRC client in your browser — single Go binary, no dependencies.
 
-The server proxies IRC over a WebSocket so you can connect from any browser. A single binary serves both the static UI and the WebSocket endpoint — no Node.js, no build step, no external dependencies beyond Go.
+![License](https://img.shields.io/badge/license-GPL--3.0-blue)
+![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8)
+![Self-hosted](https://img.shields.io/badge/self--hosted-yes-green)
+
+`scp` the binary to any server, run it, and IRC from any browser — no Node.js, no Docker, no build pipeline, no database. One process, one port.
+
+<!-- screenshot -->
+<!-- ![wirgloo screenshot](docs/screenshot.png) -->
+
+---
+
+## Why wirgloo?
+
+Most web IRC clients require a stack: a Node process, a database, a reverse proxy, npm dependencies to keep updated. Wirgloo is a single statically-linked Go binary that embeds the entire UI. Drop it on a $5 VPS, point a browser at it, done.
+
+- **Persistent sessions** — your IRC connection stays alive when the browser tab closes or the network drops. Reconnect within 30 minutes (configurable) and resume right where you left off.
+- **Zero client dependencies** — plain HTML/CSS/JS, no framework, no bundler. Works in any modern browser.
+- **One binary** — static files are baked in at build time. Copy and run.
+
+---
 
 ## Features
 
 **Connectivity**
-- TLS and plain IRC connections, optional TLS verification bypass (`-noverify`, for self-signed certs and hostname mismatches)
-- Predefined network presets (Libera.Chat, OFTC, Rizon, EFnet, QuakeNet, DALnet, Undernet, IRCnet, GeekShed, RadioChat, SDF)
+- TLS and plain IRC, optional certificate verification bypass (for self-signed certs)
+- Predefined network presets: Libera.Chat, OFTC, Rizon, EFnet, QuakeNet, DALnet, Undernet, IRCnet, GeekShed, RadioChat, SDF
 - Custom server profiles saved to browser localStorage
 - WebSocket reconnection with exponential backoff — IRC session survives brief network drops
-- Transparent reconnect after server restart: channels are re-joined, messages preserved
-- Offline channel placeholders in the sidebar — click to rejoin, topic and info printed on entry
+- Transparent reconnect after server restart: channels re-joined, messages preserved
+- Offline channel placeholders in the sidebar — click to rejoin
 
 **Authentication**
 - SASL PLAIN (full CAP negotiation)
 - NickServ IDENTIFY (PRIVMSG and NICKSERV command variants)
-- Server password (/PASS)
+- Server password (PASS)
 
 **Channels & messaging**
 - Channels, private messages, `/me` actions
 - IRC formatting codes (bold, italic, underline, colour, monospace)
 - Markdown-lite rendering (headings, bold, italic, strikethrough, inline code)
 - Nick mentions highlighted in their assigned colour
-- Chat log persisted per server/channel in localStorage, replayed on reconnect with session-break marker
-- Previously joined channels remembered and shown as offline placeholders on reconnect
-- Join/part/quit/kick events shown with directional arrows (`→` / `←`) in the nick column
+- Chat log persisted per server/channel in localStorage, replayed on reconnect with a session-break marker
+- Join/part/quit/kick events with directional arrows (`→` / `←`)
 
 **User list**
 - IRCv3 `multi-prefix` CAP — all privilege levels shown per nick
 - Prefix symbols coloured by role: `~` owner · `&` admin · `@` op · `%` half-op · `+` voice
-- Server `PREFIX` token (005) parsed at connect time — adapts to any IRCd
-- User count in panel header
+- Server `PREFIX` (005) parsed at connect time — adapts to any IRCd
 
 **WHOIS & DMs**
 - WHOIS fetched automatically when opening a DM or when someone messages you first
 - User info card: real name, host, server, idle time, channels with prefix badges
 - Identity badges: 🔒 Secure · ✓ Identified · ⚡ IRCop · 🤖 Bot · ⏾ Away
-- Away status tracked separately from WHOIS; `away_status` message clears the indicator on return
 
 **Channel list (`/list`)**
-- Top 50 channels by user count shown immediately; type to filter by name or topic (filtered server-side, no re-request needed)
+- Top 50 channels by user count shown immediately; type to filter by name or topic (filtered server-side, no re-request)
 - Sortable by name, user count, or topic
 - Click any entry to join directly
 
 **Commands**
 `/join` `/part` `/msg` `/me` `/nick` `/topic` `/kick` `/ban` `/mode`
 `/invite` `/notice` `/whois` `/ping` `/slap` `/ignore` `/unignore`
-`/list` `/clear` `/help` and raw `/raw`
+`/list` `/clear` `/help` `/raw`
 
 **UI**
 - Auto light/dark theme via `prefers-color-scheme`
 - JetBrains Mono font
 - Nick colours derived from a hash (consistent across sessions)
-- Emoji icons per entry type in sidebar (server, channel, DM, list)
 - Rate-limited outbound IRC (token bucket, 3 lines/sec)
 
-## Build & run
+---
 
-Requires Go 1.21+.
+## Quick start
+
+**Download a release** (coming soon) or build from source:
 
 ```sh
-make                   # build ./wirgloo
-make install           # install binary to /usr/local/bin
-make install-service   # install binary + systemd unit, reload systemd
+go install wirgloo   # once published to pkg.go.dev
 ```
 
-`PREFIX` and `SYSTEMD_DIR` can be overridden:
+**Build from source** — requires Go 1.21+:
+
+```sh
+git clone https://github.com/cstroie/wirgloo
+cd wirgloo
+make          # builds ./wirgloo
+./wirgloo     # open http://localhost:6677
+```
+
+---
+
+## Deployment
+
+### Systemd (recommended)
+
+```sh
+make install-service   # installs binary + systemd unit, reloads systemd
+systemctl enable --now wirgloo
+```
+
+`PREFIX` and `SYSTEMD_DIR` are overridable:
 
 ```sh
 make install-service PREFIX=/opt/wirgloo SYSTEMD_DIR=/etc/systemd/system
 ```
 
-After `install-service`, enable and start the service:
-
-```sh
-systemctl enable --now wirgloo
-```
-
 To remove:
 
 ```sh
-make uninstall         # stop service, remove unit and binary
+make uninstall   # stops service, removes unit and binary
 ```
 
-## Usage
+### Manual install
 
 ```sh
-wirgloo                              # listens on 0.0.0.0:6677
-wirgloo -addr :8080                  # custom address
-wirgloo -dev                         # serve static files from disk (no embed, for development)
-wirgloo -log-level debug             # log level: debug, info, warn, error (default: info)
-wirgloo -log-json                    # emit logs as JSON instead of text
-wirgloo -session-timeout 1h          # how long an IRC session survives a browser disconnect (default: 30m)
-wirgloo -buffer-max 1000             # max messages buffered per session while browser is disconnected (default: 500)
-wirgloo -list-preview 100            # max channels shown in /list before filtering (default: 50)
+make install   # installs binary to /usr/local/bin
+wirgloo -addr :6677
 ```
 
-Open `http://localhost:6677` in your browser, choose a network or enter a custom server, fill in your nick, and connect.
+### Reverse proxy
+
+Wirgloo binds to a single port and serves both HTTP and WebSocket on the same connection — no special proxy configuration needed beyond a standard `proxy_pass`. Example nginx snippet:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:6677;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
+```
+
+---
+
+## Configuration
+
+All options have sane defaults; none are required.
+
+```sh
+wirgloo -addr :8080                  # listen address (default: 0.0.0.0:6677)
+wirgloo -session-timeout 1h          # IRC session survives browser disconnect for this long (default: 30m)
+wirgloo -buffer-max 1000             # messages buffered per session while browser is disconnected (default: 500)
+wirgloo -list-preview 100            # channels shown in /list before filtering (default: 50)
+wirgloo -log-level debug             # log level: debug, info, warn, error (default: info)
+wirgloo -log-json                    # emit logs as JSON
+wirgloo -dev                         # serve static files from disk instead of embedded (development)
+```
 
 ### URL parameters
 
-The connect form can be pre-filled via query parameters — useful for bookmarks, shared links, or embedding:
+The connect form can be pre-filled via query string — useful for bookmarks or shared links:
 
 ```
 http://localhost:6677/?server=irc.libera.chat&tls=1&nick=mynick&channel=%23linux
 ```
 
-| Parameter  | Description                                      | Default            |
-|------------|--------------------------------------------------|--------------------|
-| `server`   | IRC server hostname (required to pre-fill)       | —                  |
-| `port`     | IRC port                                         | 6697 (TLS) / 6667  |
-| `tls`      | Use TLS — `1` or `true`                          | `false`            |
-| `noverify` | Skip TLS cert verification — `1`                 | `false`            |
-| `nick`     | Default nick                                     | —                  |
-| `realname` | Real name / GECOS                                | same as nick       |
-| `auth`     | Auth method: `none`, `sasl`, `nickserv`, `ns-msg`| `none`             |
-| `pass`     | Password for the chosen auth method              | —                  |
-| `channel`  | Channel to join after connecting                 | —                  |
+| Parameter  | Description                                       | Default           |
+|------------|---------------------------------------------------|-------------------|
+| `server`   | IRC server hostname                               | —                 |
+| `port`     | IRC port                                          | 6697 (TLS) / 6667 |
+| `tls`      | Use TLS — `1` or `true`                           | `false`           |
+| `noverify` | Skip TLS cert verification — `1`                  | `false`           |
+| `nick`     | Default nick                                      | —                 |
+| `realname` | Real name / GECOS                                 | same as nick      |
+| `auth`     | Auth method: `none`, `sasl`, `nickserv`, `ns-msg` | `none`            |
+| `pass`     | Password for the chosen auth method               | —                 |
+| `channel`  | Channel to join after connecting                  | —                 |
 
-The profile is saved to localStorage on page load. If a `?s=` session-restore parameter is also present, it takes priority and the URL parameters are ignored.
+The profile is saved to localStorage on load. A `?s=` session-restore parameter takes priority over all other URL parameters.
+
+---
 
 ## Project layout
 
 ```
-main.go          entry point, HTTP server
-ws/              WebSocket handler and message dispatch
-session/         session registry, IRC↔WS bridge, rate limiter, SASL
-irc/             IRC dial, handshake, line reader/parser
-logger/          structured logger setup
-static/          browser UI (HTML, CSS, JS — no build step)
+main.go      entry point, HTTP server, flag parsing
+ws/          WebSocket handler and message dispatch
+session/     session registry, IRC↔WS bridge, rate limiter, SASL
+irc/         IRC dial, handshake, line reader/parser
+logger/      structured logger setup
+static/      browser UI (HTML, CSS, JS — no build step)
 ```
+
+## Dependencies
+
+The only external dependency is [`gorilla/websocket`](https://github.com/gorilla/websocket) for the WebSocket upgrade. Everything else is standard library.
+
+---
 
 ## License
 
