@@ -1633,7 +1633,8 @@ function resetAutoAway() {
   clearTimeout(autoAwayTimer);
   if (state.connected) {
     autoAwayTimer = setTimeout(() => {
-      if (!state.away) {
+      const inIdleChannel = [...state.channels.keys()].some(t => t.includes('idle'));
+      if (!state.away && !inIdleChannel) {
         autoAwayActive = true;
         send({ type: 'raw', line: `AWAY :${AUTO_AWAY_MSG}` });
       }
