@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="wirgloo — self-hosted web IRC client. Single Go binary, no dependencies.">
+  <meta name="theme-color" content="#13141a" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f1f2f6" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>wirgloo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +21,7 @@
       <div id="connect-error" class="error-msg hidden"></div>
       <form id="connect-form">
         <div class="field">
-          <label>Network</label>
+          <label for="network">Network</label>
           <div class="select-row">
           <select id="network">
             <option value="libera">Libera.Chat</option>
@@ -33,27 +37,27 @@
             <option value="sdf">SDF</option>
             <option value="custom">Custom…</option>
           </select>
-          <button type="button" id="delete-profile-btn" class="hidden" title="Delete saved profile">×</button>
+          <button type="button" id="delete-profile-btn" class="hidden" title="Delete saved profile" aria-label="Delete saved profile">×</button>
           </div>
         </div>
         <div class="field hidden" id="server-field">
-          <label>Server</label>
+          <label for="server">Server</label>
           <input type="text" id="server" value="irc.libera.chat">
         </div>
         <div class="field-row">
           <div class="field" style="flex:0 0 auto">
-            <label>Port</label>
+            <label for="port">Port</label>
             <input type="number" id="port" value="6697" min="1" max="65535" style="width:80px">
           </div>
           <div class="field toggle-field">
-            <label>TLS</label>
+            <label for="tls">TLS</label>
             <label class="toggle">
               <input type="checkbox" id="tls" checked>
               <span class="slider"></span>
             </label>
           </div>
           <div class="field toggle-field" id="noverify-field">
-            <label>No verify</label>
+            <label for="noverify">No verify</label>
             <label class="toggle">
               <input type="checkbox" id="noverify">
               <span class="slider"></span>
@@ -61,15 +65,15 @@
           </div>
         </div>
         <div class="field">
-          <label>Nickname</label>
+          <label for="nick">Nickname</label>
           <input type="text" id="nick" placeholder="yournick" required>
         </div>
         <div class="field">
-          <label>Real Name <span class="field-optional">(optional)</span></label>
+          <label for="realname">Real Name <span class="field-optional">(optional)</span></label>
           <input type="text" id="realname" placeholder="Your Name">
         </div>
         <div class="field">
-          <label>Authentication</label>
+          <label for="auth-method">Authentication</label>
           <select id="auth-method">
             <option value="none">None</option>
             <option value="sasl">SASL PLAIN</option>
@@ -79,12 +83,12 @@
           </select>
         </div>
         <div class="field hidden" id="pass-field">
-          <label>Password</label>
+          <label for="pass">Password</label>
           <input type="password" id="pass" placeholder="password" autocomplete="current-password">
         </div>
         <button type="submit" id="connect-btn">Connect</button>
       </form>
-      <div id="connect-version" class="app-version"></div>
+      <small id="connect-version" class="app-version"></small>
     </div>
 
   </div>
@@ -102,46 +106,46 @@
   <div id="chat-screen" class="hidden">
     <div id="sidebar">
       <div id="sidebar-header">
-        <span id="my-nick"></span>
-        <button id="nick-btn" title="Change nick">✎</button>
+        <span id="my-nick" aria-label="Current nick"></span>
+        <button id="nick-btn" title="Change nick" aria-label="Change nick">✎</button>
       </div>
-      <div id="channel-list"></div>
+      <div id="channel-list" role="list" aria-label="Channels"></div>
       <div id="sidebar-footer">
-        <button id="list-btn">≡ List</button>
-        <button id="join-btn">+ Join</button>
-        <button id="away-btn">⏾ Away</button>
+        <button id="list-btn" aria-label="List channels">≡ List</button>
+        <button id="join-btn" aria-label="Join channel">+ Join</button>
+        <button id="away-btn" aria-label="Toggle away status">⏾ Away</button>
         <button id="disconnect-btn">Disconnect</button>
       </div>
-      <div id="sidebar-version" class="app-version"></div>
+      <small id="sidebar-version" class="app-version"></small>
     </div>
 
     <div id="main">
       <div id="topic-bar">
-        <button id="sidebar-toggle" class="panel-toggle" title="Channels">☰</button>
+        <button id="sidebar-toggle" class="panel-toggle" title="Channels" aria-label="Show channels sidebar">☰</button>
         <span id="target-name"></span>
         <span id="topic-text"></span>
-        <button id="userlist-toggle" class="panel-toggle" title="Users">◉</button>
+        <button id="userlist-toggle" class="panel-toggle" title="Users" aria-label="Show users panel">◉</button>
       </div>
-      <div id="list-sort-bar" class="hidden">
+      <div id="list-sort-bar" class="hidden" role="group" aria-label="Sort and filter channels">
         <span class="sort-label">Sort by</span>
         <button class="sort-btn" data-sort="users">Users ↓</button>
         <button class="sort-btn" data-sort="name">Name</button>
         <button class="sort-btn" data-sort="topic">Topic</button>
-        <input type="search" id="list-filter" placeholder="Filter channels…" autocomplete="off" spellcheck="false">
+        <input type="search" id="list-filter" placeholder="Filter channels…" autocomplete="off" spellcheck="false" aria-label="Filter channels">
       </div>
-      <div id="messages"></div>
-      <button id="scroll-bottom" title="Scroll to bottom" aria-label="Scroll to bottom">↓</button>
+      <div id="messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
+      <button id="scroll-bottom" aria-label="Scroll to bottom">↓</button>
       <div id="input-bar">
-        <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false">
-        <button id="send-btn">Send</button>
+        <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
+        <button type="button" id="send-btn">Send</button>
       </div>
     </div>
 
     <div id="userlist-panel">
-      <div id="userlist-header">Users</div>
-      <div id="userlist"></div>
+      <h2 id="userlist-header">Users</h2>
+      <div id="userlist" role="list" aria-label="Users in channel"></div>
       <div id="userlist-footer" class="hidden"></div>
-      <div id="lag-display">ping: -- ms</div>
+      <div id="lag-display" role="status" aria-live="polite">ping: -- ms</div>
     </div>
   </div>
 

@@ -137,11 +137,11 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   background: var(--accent); border: none; border-radius: var(--radius);
   color: #fff; font-family: var(--font-mono); font-size: 0.95rem; cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px rgba(108,99,255,0.35);
+  box-shadow: 0 4px 14px var(--accent-bg);
 }
 .connect-box button[type=submit]:hover {
   background: var(--accent2);
-  box-shadow: 0 4px 18px rgba(108,99,255,0.5);
+  box-shadow: 0 4px 18px var(--accent-bg);
 }
 
 .field-optional { color: var(--text-dim); font-size: 0.75em; font-style: italic; text-transform: none; letter-spacing: 0; }
@@ -223,7 +223,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   text-align: left;
 }
 #sidebar-footer button:hover { color: var(--text); background: var(--bg3); }
-#disconnect-btn:hover { color: var(--error) !important; background: rgba(248,113,113,0.1) !important; }
+#sidebar-footer #disconnect-btn:hover { color: var(--error); background: rgba(248,113,113,0.1); }
 
 #main {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
@@ -262,7 +262,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   line-height: 1.55; padding: 2px 6px; border-radius: 6px;
   transition: background 0.1s;
 }
-.msg:hover { background: rgba(255,255,255,0.03); }
+.msg:hover { background: rgba(255,255,255,0.05); }
 .msg .ts { color: var(--text-dim); font-size: 0.7rem; text-align: right; padding-top: 3px; white-space: nowrap; opacity: 0.7; }
 .msg .body { display: flex; gap: 8px; flex-wrap: wrap; word-break: break-word; }
 .msg .nick-col { min-width: 100px; max-width: 150px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
@@ -288,7 +288,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .msg.me .text { color: var(--me); font-style: italic; }
 .msg.error .text { color: var(--error); }
 .msg.connecting .nick-col { color: var(--text-dim); }
-.msg.connecting .text { color: #a78bfa; font-size: 0.85rem; font-style: italic; }
+.msg.connecting .text { color: var(--mention); font-size: 0.85rem; font-style: italic; }
 .msg.motd { line-height: 1.0; padding: 0px 6px; }
 .msg.motd .nick-col { color: var(--text-dim); }
 .msg.motd .text { color: var(--text-dim); font-size: 0.85rem; white-space: pre; }
@@ -320,9 +320,9 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   background: var(--accent); border: none; border-radius: var(--radius);
   color: #fff; font-family: var(--font-mono); padding: 9px 20px; cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
-  box-shadow: 0 2px 8px rgba(108,99,255,0.3);
+  box-shadow: 0 2px 8px var(--accent-bg);
 }
-#send-btn:hover { background: var(--accent2); box-shadow: 0 2px 12px rgba(108,99,255,0.45); }
+#send-btn:hover { background: var(--accent2); box-shadow: 0 2px 12px var(--accent-bg); }
 
 #userlist-panel {
   width: var(--users-w); background: var(--bg2);
@@ -335,7 +335,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   display: flex; align-items: center; justify-content: flex-end;
   height: var(--header-h); padding: 0 14px;
   border-bottom: 1px solid var(--border);
-  color: var(--text-head); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-head); font-size: 0.9rem; font-weight: normal; text-transform: uppercase; letter-spacing: 1px;
 }
 #userlist { flex: 1; overflow-y: auto; padding: 6px 0; }
 #sidebar-version { padding: 6px 14px 10px; text-align: center; border-top: 1px solid var(--border);}
@@ -345,8 +345,8 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   display: flex; align-items: center; justify-content: space-between;
   padding: 4px 8px 4px 14px; color: var(--text-dim); font-size: 0.85rem;
   border-radius: 5px; margin: 1px 6px; transition: background 0.1s, color 0.1s;
+  cursor: default;
 }
-.user-item { cursor: default; }
 .user-item:hover { background: var(--bg3); color: var(--text); }
 .user-item.owner  { color: #e05c5c; }
 .user-item.admin  { color: #e07c3a; }
@@ -384,7 +384,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   text-align: left;
 }
 #userlist-footer button:hover { color: var(--text); background: var(--bg3); }
-#userlist-footer button.danger:hover { color: var(--error) !important; background: rgba(248,113,113,0.1) !important; }
+#userlist-footer button.danger:hover { color: var(--error); background: rgba(248,113,113,0.1); }
 .userlist-footer-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .dm-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 2px; }
 .user-badge {
@@ -427,6 +427,12 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 @media (prefers-color-scheme: dark) {
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); }
   ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
+}
+
+@media (max-width: 800px) and (prefers-color-scheme: light) {
+  .msg-header { color: hsl(var(--nc-hue, 220), 55%, 38%); }
+  .msg .text  { background: hsl(var(--nc-hue, 220), 40%, 93%); }
+  .msg.self .text { background: hsl(var(--nc-hue, 255), 45%, 84%); }
 }
 
 .md-h { font-weight: bold; color: var(--accent); display: inline; }
@@ -534,11 +540,6 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   }
   .msg.self:not(.grouped) .text { border-radius: 14px 14px 4px 14px; }
 
-  @media (prefers-color-scheme: light) {
-    .msg-header { color: hsl(var(--nc-hue, 220), 55%, 38%); }
-    .msg .text  { background: hsl(var(--nc-hue, 220), 40%, 93%); }
-    .msg.self .text { background: hsl(var(--nc-hue, 255), 45%, 84%); }
-  }
 
   /* server / status — no bubble, centred */
   .msg.system .body, .msg.join .body, .msg.part .body,
@@ -569,8 +570,8 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 
 /* ── Narrow mobile only (≤ 640px): slide-in panels ─── */
 @media (max-width: 640px) {
-  html, body   { height: 100dvh; }
-  #chat-screen { height: 100dvh; }
+  html, body   { height: 100vh; height: 100dvh; }
+  #chat-screen { height: 100vh; height: 100dvh; }
 
   .panel-toggle { display: flex; align-items: center; justify-content: center; }
 

@@ -91,7 +91,7 @@ fetch('/version').then(r => r.json()).then(v => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
     state.ws = ws;
-    ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch {} };
+    ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
     ws.onerror = () => {};
     ws.onclose = () => {
       restoreScreen.classList.add('hidden');
@@ -231,7 +231,7 @@ function restoreSavedChannels(server) {
   } catch {}
   // pre-fill form from the last session server if known
   const lastServer = localStorage.getItem('wirgloo_session_server');
-  const lastNet    = lastServer ? null : localStorage.getItem('wirgloo_last_network');
+  const lastNet    = !lastServer ? localStorage.getItem('wirgloo_last_network') : null;
   if (lastServer) {
     const srv = loadSrv(lastServer);
     if (srv.nick)       $('nick').value = srv.nick;
@@ -332,7 +332,7 @@ function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
   };
 
   ws.onmessage = e => {
-    try { handle(JSON.parse(e.data)); } catch {}
+    try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); }
   };
 
   ws.onerror = () => {};
@@ -541,7 +541,8 @@ function handle(msg) {
         removeChannel(msg.channel);
         saveChannels(state.server); saveDMs(state.server);
       } else {
-        state.channels.get(msg.channel)?.nicks.delete(msg.nick);        renderUserlist();
+        state.channels.get(msg.channel)?.nicks.delete(msg.nick);
+        renderUserlist();
         appendMsg(msg.channel, { type: 'part', nick: '←', text: `${msg.nick} left ${msg.channel}${msg.text ? ' (' + msg.text + ')' : ''}`, ts: msg.ts });
       }
       break;
@@ -716,7 +717,8 @@ function handle(msg) {
       const ch = state.channels.get(msg.channel);
       if (ch) {
         if (!ch._namesAccum) ch._namesAccum = new Map();
-        const allPrefixSyms = new RegExp(`^[${Object.keys(state.prefixRank).map(s => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')).join('')}]+`);
+        const escaped = Object.keys(state.prefixRank).map(s => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')).join('');
+        const allPrefixSyms = new RegExp(`^[${escaped}]+`);
         msg.nicks.forEach(n => {
           const pm = n.match(allPrefixSyms);
           const prefix = pm ? pm[0] : '';
@@ -774,7 +776,7 @@ function persistMsg(target, m) {
   try { log = JSON.parse(localStorage.getItem(key) || '[]'); } catch { log = []; }
   log.push(m);
   if (log.length > LOG_MAX) log.splice(0, log.length - LOG_MAX);
-  try { localStorage.setItem(key, JSON.stringify(log)); } catch {}
+  try { localStorage.setItem(key, JSON.stringify(log)); } catch { console.warn('localStorage quota exceeded — chat log not saved'); }
 }
 
 function loadLog(server, target) {
@@ -826,9 +828,10 @@ function setActive(target) {
 
 function updateInputState() {
   const ch = state.active && state.channels.get(state.active);
+  const identified = !!state.whoisUsers.get(state.nick)?.account;
   const muted = ch && (
     (ch.modes.has('m') && !isVoicedOrOp(state.active, state.nick)) ||
-    (ch.modes.has('R') && !state.identified)
+    (ch.modes.has('R') && !identified)
   );
   input.disabled = !!muted;
   input.placeholder = muted
@@ -1408,6 +1411,7 @@ function handleCommand(raw) {
     case 'MSG':
     case 'QUERY': {
       const [target, ...txt] = arg.split(' ');
+      if (!target) break;
       openDM(target);
       if (txt.length) {
         send({ type: 'message', target, text: txt.join(' ') });
@@ -1613,7 +1617,7 @@ function scheduleReconnect() {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       const ws = new WebSocket(`${proto}://${location.host}/ws?session=${state.sessionId}`);
       state.ws = ws;
-      ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch {} };
+      ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
       ws.onerror = () => {};
       ws.onclose = () => { if (state.sessionId || state.connectParams) scheduleReconnect(); };
     } else if (state.connectParams) {
@@ -1636,6 +1640,7 @@ function onConnectFailed(reason) {
 
 function onDisconnect(reason) {
   clearTimeout(lagTimer);
+  clearTimeout(listFilterTimer);
   updateLagDisplay(null);
   state.connected = false;
   state.sessionId = null;
