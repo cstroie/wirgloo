@@ -41,6 +41,7 @@ The server proxies IRC over a WebSocket so you can connect from any browser. A s
 - Away status tracked separately from WHOIS; `away_status` message clears the indicator on return
 
 **Channel list (`/list`)**
+- Top 50 channels by user count shown immediately; type to filter by name or topic (filtered server-side, no re-request needed)
 - Sortable by name, user count, or topic
 - Click any entry to join directly
 
@@ -87,11 +88,14 @@ make uninstall         # stop service, remove unit and binary
 ## Usage
 
 ```sh
-wirgloo                        # listens on 0.0.0.0:6677
-wirgloo -addr :8080            # custom address
-wirgloo -dev                   # serve static files from disk (no embed, for development)
-wirgloo -log-level debug       # log level: debug, info, warn, error (default: info)
-wirgloo -log-json              # emit logs as JSON instead of text
+wirgloo                              # listens on 0.0.0.0:6677
+wirgloo -addr :8080                  # custom address
+wirgloo -dev                         # serve static files from disk (no embed, for development)
+wirgloo -log-level debug             # log level: debug, info, warn, error (default: info)
+wirgloo -log-json                    # emit logs as JSON instead of text
+wirgloo -session-timeout 1h          # how long an IRC session survives a browser disconnect (default: 30m)
+wirgloo -buffer-max 1000             # max messages buffered per session while browser is disconnected (default: 500)
+wirgloo -list-preview 100            # max channels shown in /list before filtering (default: 50)
 ```
 
 Open `http://localhost:6677` in your browser, choose a network or enter a custom server, fill in your nick, and connect.

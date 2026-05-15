@@ -33,11 +33,13 @@ import (
 // AppVersion is set by main at startup to the build-time version string.
 var AppVersion = "dev"
 
-const wsReconnectWindow = 30 * time.Minute // idle WS window before the IRC connection is torn down
-const bufferMax         = 500              // max IRC messages buffered while the WS is detached
-const pingInterval      = 90 * time.Second // how often to send a client-initiated PING to the server
-const pingTimeout       = 60 * time.Second // max time to wait for a PONG before declaring the link dead
-const listPreviewSize   = 50               // channels sent to the browser before any filter is applied
+const pingInterval = 90 * time.Second // how often to send a client-initiated PING to the server
+const pingTimeout  = 60 * time.Second // max time to wait for a PONG before declaring the link dead
+
+// Tunable defaults — may be overridden by main before any session is created.
+var WsReconnectWindow = 30 * time.Minute // idle WS window before the IRC connection is torn down
+var BufferMax         = 500              // max IRC messages buffered while the WS is detached
+var ListPreviewSize   = 50               // channels sent to the browser before any filter is applied
 
 const (
 	sendBurst    = 5                      // initial token allowance for the outbound rate limiter
@@ -134,7 +136,7 @@ func (r *Registry) Detach(s *Session) {
 	s.ws = nil
 	s.mu.Unlock()
 
-	time.AfterFunc(wsReconnectWindow, func() {
+	time.AfterFunc(WsReconnectWindow, func() {
 		s.mu.Lock()
 		wsGone := s.ws == nil
 		s.mu.Unlock()
@@ -746,9 +748,9 @@ func (s *Session) sendListResults(query string) {
 
 	total := len(all)
 	shown := len(filtered)
-	capped := shown > listPreviewSize && q == ""
+	capped := shown > ListPreviewSize && q == ""
 	if capped {
-		filtered = filtered[:listPreviewSize]
+		filtered = filtered[:ListPreviewSize]
 	}
 
 	s.sendWS(map[string]any{"type": "list_start", "filter": query})
@@ -781,7 +783,7 @@ func (s *Session) sendWS(v any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.ws == nil {
-		if len(s.buf) < bufferMax {
+		if len(s.buf) < BufferMax {
 			s.buf = append(s.buf, data)
 		}
 		return
