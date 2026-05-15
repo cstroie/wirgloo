@@ -279,8 +279,11 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .msg.system .nick-col { color: var(--text-dim); }
 .msg.system .text { color: var(--text-dim); font-style: italic; }
 .msg.join .text { color: var(--join); font-style: italic; font-size: 0.85rem; }
+.msg.join .nick-col { font-size: 0.85rem; }
 .msg.part .text { color: var(--part); font-style: italic; font-size: 0.85rem; }
+.msg.part .nick-col { font-size: 0.85rem; }
 .msg.quit .text { color: var(--part); font-style: italic; font-size: 0.85rem; }
+.msg.quit .nick-col { font-size: 0.85rem; }
 .msg.notice .text { color: var(--notice); }
 .msg.me .text { color: var(--me); font-style: italic; }
 .msg.error .text { color: var(--error); }
