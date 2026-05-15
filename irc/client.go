@@ -17,6 +17,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"wirgloo/logger"
 )
 
 // Message is a parsed IRC protocol line.
@@ -109,6 +111,9 @@ func ReadLoop(conn net.Conn, out chan<- string, done <-chan struct{}) {
 		case <-done:
 			return
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		logger.L.Warn("irc read error", "err", err)
 	}
 	close(out)
 }

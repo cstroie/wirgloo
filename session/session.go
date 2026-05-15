@@ -848,6 +848,8 @@ func (s *Session) Close() {
 // newID generates a random 8-byte hex session identifier.
 func newID() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand unavailable: " + err.Error())
+	}
 	return hex.EncodeToString(b)
 }

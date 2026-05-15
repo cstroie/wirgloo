@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"wirgloo/logger"
@@ -72,8 +73,9 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 				s.SendResumed()
 			} else {
 				logger.L.Info("session not found, notifying client", "id", id, "remote", r.RemoteAddr)
-				data, _ := json.Marshal(map[string]any{"type": "session_expired"})
-				conn.WriteMessage(websocket.TextMessage, data)
+				if data, err := json.Marshal(map[string]any{"type": "session_expired"}); err == nil {
+					conn.WriteMessage(websocket.TextMessage, data)
+				}
 			}
 		}
 		if s == nil {
@@ -105,6 +107,11 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 	}
 }
 
+// sanitize strips CR and LF from a string to prevent IRC command injection.
+func sanitize(s string) string {
+	return strings.NewReplacer("\r", "", "\n", "").Replace(s)
+}
+
 // dispatch routes an inbound browser message to the appropriate Session method
 // or raw IRC command. Unknown message types are silently ignored so future
 // client-only messages don't require server changes.
@@ -129,18 +136,18 @@ func dispatch(s *session.Session, msg inMsg) error {
 	case "join":
 		// Pass the channel key when joining a +k channel.
 		if msg.Key != "" {
-			return s.SendIRC("JOIN " + msg.Channel + " " + msg.Key)
+			return s.SendIRC("JOIN " + sanitize(msg.Channel) + " " + sanitize(msg.Key))
 		}
-		return s.SendIRC("JOIN " + msg.Channel)
+		return s.SendIRC("JOIN " + sanitize(msg.Channel))
 	case "part":
 		if msg.Text != "" {
-			return s.SendIRC("PART " + msg.Channel + " :" + msg.Text)
+			return s.SendIRC("PART " + sanitize(msg.Channel) + " :" + sanitize(msg.Text))
 		}
-		return s.SendIRC("PART " + msg.Channel)
+		return s.SendIRC("PART " + sanitize(msg.Channel))
 	case "message":
-		return s.SendIRC(fmt.Sprintf("PRIVMSG %s :%s", msg.Target, msg.Text))
+		return s.SendIRC(fmt.Sprintf("PRIVMSG %s :%s", sanitize(msg.Target), sanitize(msg.Text)))
 	case "nick":
-		return s.SendIRC("NICK " + msg.Nick)
+		return s.SendIRC("NICK " + sanitize(msg.Nick))
 	case "raw":
 		// Allows the browser to send arbitrary IRC lines (e.g. /raw).
 		return s.SendIRC(msg.Line)
