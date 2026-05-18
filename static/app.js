@@ -705,7 +705,7 @@ function handle(msg) {
       const ch = state.channels.get(msg.channel);
       if (ch) {
         ch.topic = msg.text;
-        if (msg.channel === state.active) topicText.textContent = msg.text;
+        if (msg.channel === state.active) topicText.innerHTML = renderText(msg.text);
         if (state.joiningChannels?.has(msg.channel) && msg.text) {
           appendMsg(msg.channel, { type: 'system', nick: '*', text: `Topic for ${msg.channel} is: ${msg.text}`, ts: msg.ts });
         } else if (msg.nick) {
@@ -836,7 +836,7 @@ function setActive(target) {
   renderUserlist();
   targetName.textContent = target === '*server*' ? (state.servername || state.server) : target;
   if (isDM(target)) updateDMTopic(target);
-  else topicText.textContent = ch.topic || '';
+  else topicText.innerHTML = renderText(ch.topic || '');
   updateTitle();
   renderListBar();
   updateInputState();
@@ -881,7 +881,7 @@ function renderListMessages() {
       <span class="ts list-count">${item.count}</span>
       <span class="body">
         <span class="nick-col chan list-join" data-channel="${escHtml(item.channel)}">${escHtml(item.channel)}</span>
-        <span class="text ltopic">${linkify(escHtml(item.topic))}</span>
+        <span class="text ltopic">${renderText(item.topic)}</span>
       </span>`;
     el.querySelector('.list-join').addEventListener('click', () => {
       send({ type: 'join', channel: item.channel });
@@ -942,7 +942,7 @@ function applyServerMeta(network, servername, welcome) {
   if (srv && welcome) srv.topic = welcome;
   if (state.active === '*server*') {
     targetName.textContent = state.servername || state.server;
-    if (welcome !== null) topicText.textContent = welcome || '';
+    if (welcome !== null) topicText.innerHTML = renderText(welcome || '');
   }
 }
 
