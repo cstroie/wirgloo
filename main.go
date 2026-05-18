@@ -31,18 +31,18 @@ var staticFiles embed.FS // embedded copy of the static/ directory, baked in at 
 var version = "dev"
 
 func main() {
-	addr            := flag.String("addr", "0.0.0.0:6677", "listen address")
-	dev             := flag.Bool("dev", false, "serve static files from disk (dev mode)")
-	logJSON         := flag.Bool("log-json", false, "emit logs as JSON")
-	logLevel        := flag.String("log-level", "info", "log level: debug, info, warn, error")
-	sessionTimeout  := flag.Duration("session-timeout", session.WsReconnectWindow, "how long an IRC session survives a browser disconnect")
-	bufferMax       := flag.Int("buffer-max", session.BufferMax, "max messages buffered per session while browser is disconnected")
-	listPreview     := flag.Int("list-preview", session.ListPreviewSize, "max channels shown in /list before filtering")
+	addr := flag.String("addr", "0.0.0.0:6677", "listen address")
+	dev := flag.Bool("dev", false, "serve static files from disk (dev mode)")
+	logJSON := flag.Bool("log-json", false, "emit logs as JSON")
+	logLevel := flag.String("log-level", "info", "log level: debug, info, warn, error")
+	sessionTimeout := flag.Duration("session-timeout", session.WsReconnectWindow, "how long an IRC session survives a browser disconnect")
+	bufferMax := flag.Int("buffer-max", session.BufferMax, "max messages buffered per session while browser is disconnected")
+	listPreview := flag.Int("list-preview", session.ListPreviewSize, "max channels shown in /list before filtering")
 	flag.Parse()
 
 	session.WsReconnectWindow = *sessionTimeout
-	session.BufferMax         = *bufferMax
-	session.ListPreviewSize   = *listPreview
+	session.BufferMax = *bufferMax
+	session.ListPreviewSize = *listPreview
 
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(*logLevel)); err != nil {

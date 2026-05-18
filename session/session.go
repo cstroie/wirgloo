@@ -25,21 +25,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/cstroie/wirgloo/irc"
 	"github.com/cstroie/wirgloo/logger"
+	"github.com/gorilla/websocket"
 )
 
 // AppVersion is set by main at startup to the build-time version string.
 var AppVersion = "dev"
 
 const pingInterval = 90 * time.Second // how often to send a client-initiated PING to the server
-const pingTimeout  = 60 * time.Second // max time to wait for a PONG before declaring the link dead
+const pingTimeout = 60 * time.Second  // max time to wait for a PONG before declaring the link dead
 
 // Tunable defaults — may be overridden by main before any session is created.
 var WsReconnectWindow = 30 * time.Minute // idle WS window before the IRC connection is torn down
-var BufferMax         = 500              // max IRC messages buffered while the WS is detached
-var ListPreviewSize   = 50               // channels sent to the browser before any filter is applied
+var BufferMax = 500                      // max IRC messages buffered while the WS is detached
+var ListPreviewSize = 50                 // channels sent to the browser before any filter is applied
 
 const (
 	sendBurst    = 5                      // initial token allowance for the outbound rate limiter
@@ -63,11 +63,11 @@ type Session struct {
 	ws         *websocket.Conn // current WebSocket; nil while detached
 	buf        [][]byte        // JSON messages buffered while ws is nil
 	conn       net.Conn        // underlying IRC TCP connection
-	done       chan struct{}    // closed once to signal all goroutines to exit
+	done       chan struct{}   // closed once to signal all goroutines to exit
 	authMethod string          // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
 	authPass   string          // password for the chosen auth method
 	lastPong   time.Time       // wall time of the most recent PONG received
-	sendQ      chan string      // rate-limited outbound IRC line queue
+	sendQ      chan string     // rate-limited outbound IRC line queue
 	channels   map[string]bool // channels the client is currently joined to
 	network    string          // NETWORK= value from 005, e.g. "Libera.Chat"
 	servername string          // server hostname from 004 RPL_MYINFO
@@ -267,10 +267,10 @@ func (s *Session) SendResumed() {
 	for ch := range s.channels {
 		channels = append(channels, ch)
 	}
-	network    := s.network
+	network := s.network
 	servername := s.servername
-	welcome    := s.welcome
-	meta       := s.meta
+	welcome := s.welcome
+	meta := s.meta
 	s.mu.Unlock()
 	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta})
 	s.SendIRC("ADMIN")
