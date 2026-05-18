@@ -1412,6 +1412,7 @@ function handleCommand(raw) {
   const [cmd, ...rest] = raw.split(' ');
   const arg = rest.join(' ');
   switch (cmd.toUpperCase()) {
+    case 'J':
     case 'JOIN': {
       const [jchan, jkey] = arg.split(/\s+/, 2);
       const jchanKey = chanKey(jchan);
@@ -1420,12 +1421,14 @@ function handleCommand(raw) {
       if (jkey) { ensureChannel(jchanKey); state.channels.get(jchanKey).key = jkey; }
       break;
     }
+    case 'P':
     case 'PART':
       send({ type: 'part', channel: arg || state.active });
       break;
     case 'NICK':
       send({ type: 'nick', nick: arg });
       break;
+    case 'M':
     case 'MSG':
     case 'QUERY': {
       const [target, ...txt] = arg.split(' ');
@@ -1449,12 +1452,14 @@ function handleCommand(raw) {
     case 'LIST':
       send({ type: 'raw', line: arg ? `LIST ${arg}` : 'LIST' });
       break;
+    case 'WI':
     case 'WHOIS':
       if (arg) send({ type: 'raw', line: `WHOIS ${arg}` });
       break;
     case 'AWAY':
       send({ type: 'raw', line: arg ? `AWAY :${arg}` : 'AWAY' });
       break;
+    case 'Q':
     case 'QUOTE':
     case 'RAW':
       send({ type: 'raw', line: arg });
@@ -1530,10 +1535,10 @@ function handleCommand(raw) {
       break;
     case 'HELP': {
       const cmds = [
-        '/join <#channel> [key]  — join a channel',
-        '/part [reason]          — leave current channel',
+        '/join <#channel> [key]  — join a channel  (/j)',
+        '/part [reason]          — leave current channel  (/p)',
         '/nick <newnick>         — change nickname',
-        '/msg <nick> [text]      — open DM / send message',
+        '/msg <nick> [text]      — open DM / send message  (/m)',
         '/me <action>            — send action (/me waves)',
         '/notice <target> <text> — send a NOTICE',
         '/topic [new topic]      — show or set topic',
@@ -1542,7 +1547,7 @@ function handleCommand(raw) {
         '/unban <nick>           — remove ban',
         '/mode [target] <modes>  — set modes',
         '/invite <nick> [#chan]  — invite user to channel',
-        '/whois <nick>           — show user info',
+        '/whois <nick>           — show user info  (/wi)',
         '/ping <nick>            — CTCP ping a user',
         '/away [message]         — set or clear away status',
         '/list [filter]          — list channels',
@@ -1550,7 +1555,7 @@ function handleCommand(raw) {
         '/unignore <nick>        — stop ignoring nick',
         '/slap <nick>            — the classics never die',
         '/clear                  — clear message buffer',
-        '/raw <line>             — send raw IRC line',
+        '/raw <line>             — send raw IRC line  (/q, /quote)',
         '/help                   — show this list',
       ];
       cmds.forEach(t => appendMsg(state.active, { type: 'system', nick: '--', text: t }));
