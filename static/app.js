@@ -1405,25 +1405,46 @@ const inputHistory = (() => {
 const tabComplete = (() => {
   let candidates = [], idx = -1, prefix = '', stub = '';
 
+  const COMMANDS = [
+    'away','ban','clear','help','ignore','invite','join','kick','list',
+    'me','mode','msg','nick','notice','part','ping','query','quit',
+    'raw','slap','topic','unban','unignore','whois',
+  ];
+
   return {
     next() {
-      const ch = state.active && state.channels.get(state.active);
-      if (!ch) return;
-
       if (candidates.length === 0) {
         const val   = input.value;
         const space = val.lastIndexOf(' ');
         stub        = val.slice(space + 1);
         prefix      = val.slice(0, space + 1);
         if (!stub) return;
-        candidates = [...ch.nicks.keys()]
-          .filter(n => n.toLowerCase().startsWith(stub.toLowerCase()))
-          .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+
+        const low = stub.toLowerCase();
+
+        if (space === -1 && val.startsWith('/')) {
+          // complete command name
+          const cmdStub = low.slice(1);
+          candidates = COMMANDS.filter(c => c.startsWith(cmdStub)).map(c => '/' + c);
+        } else if (stub.startsWith('#')) {
+          // complete channel name from open channels
+          candidates = [...state.channels.keys()]
+            .filter(k => k.startsWith('#') && k.startsWith(low))
+            .sort();
+        } else {
+          // complete nick from current channel
+          const ch = state.active && state.channels.get(state.active);
+          if (!ch) return;
+          candidates = [...ch.nicks.keys()]
+            .filter(n => n.toLowerCase().startsWith(low))
+            .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        }
         idx = -1;
       }
       if (candidates.length === 0) return;
       idx = (idx + 1) % candidates.length;
-      const suffix = prefix === '' ? ': ' : ' ';
+      const isNick = !candidates[0].startsWith('/') && !candidates[0].startsWith('#');
+      const suffix = (isNick && prefix === '') ? ': ' : ' ';
       input.value  = prefix + candidates[idx] + suffix;
     },
     reset() { candidates = []; idx = -1; stub = ''; prefix = ''; },
