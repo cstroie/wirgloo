@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"wirgloo/irc"
-	"wirgloo/logger"
+	"github.com/cstroie/wirgloo/irc"
+	"github.com/cstroie/wirgloo/logger"
 )
 
 // AppVersion is set by main at startup to the build-time version string.

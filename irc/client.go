@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"wirgloo/logger"
+	"github.com/cstroie/wirgloo/logger"
 )
 
 // Message is a parsed IRC protocol line.

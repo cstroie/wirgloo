@@ -18,9 +18,9 @@ import (
 	"net/http"
 	"os"
 
-	"wirgloo/logger"
-	"wirgloo/session"
-	"wirgloo/ws"
+	"github.com/cstroie/wirgloo/logger"
+	"github.com/cstroie/wirgloo/session"
+	"github.com/cstroie/wirgloo/ws"
 )
 
 //go:embed static/*

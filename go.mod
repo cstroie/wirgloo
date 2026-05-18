@@ -1,4 +1,4 @@
-module wirgloo
+module github.com/cstroie/wirgloo
 
 go 1.26.2
 
