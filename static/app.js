@@ -476,11 +476,13 @@ function handle(msg) {
       state.network = msg.value;
       applyServerMeta(state.network, state.servername, null);
       renderChannelList();
+      updateTitle();
       break;
 
     case 'servername':
       state.servername = msg.value;
       applyServerMeta(state.network, state.servername, null);
+      updateTitle();
       break;
 
     case 'connected': {
@@ -978,7 +980,19 @@ function renderListMessages() {
 }
 
 function updateTitle() {
-  const label = state.active === '*server*' ? (state.servername || state.server) : state.active;
+  const net = state.network || state.servername || state.server;
+  let label;
+  if (!state.active) {
+    label = null;
+  } else if (state.active === '*server*') {
+    label = net ? `🖧 ${net}` : null;
+  } else if (state.active === '*list*') {
+    label = net ? `☰ ${net}` : '☰ Channel list';
+  } else if (state.active.startsWith('#')) {
+    label = `＃ ${net ? net + ' — ' : ''}${state.active}`;
+  } else {
+    label = `◉ ${net ? net + ' — ' : ''}${state.active}`;
+  }
   document.title = label ? `${label} — wirgloo` : 'wirgloo';
 }
 
