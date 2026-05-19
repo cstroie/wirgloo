@@ -1,5 +1,62 @@
 'use strict';
 
+// ── Nick suggestion ───────────────────────────────────────────────────────────
+const NICK_ADJ  = ['Acid','Aero','Amber','Arc','Ash','Astro','Atomic','Azure',
+  'Binary','Blaze','Bright','Brisk','Calm','Carbon','Chrome','Circuit','Cobalt',
+  'Cold','Core','Crisp','Cyber','Dark','Deep','Delta','Dense','Drift','Echo',
+  'Edge','Ember','Ether','Fast','Feral','Flash','Flux','Frozen','Ghost','Glitch',
+  'Glow','Hyper','Ice','Infra','Jade','Jade','Kinetic','Laser','Lunar','Lyric',
+  'Macro','Mach','Micro','Neon','Nimble','Nitro','Noble','Null','Obsidian',
+  'Omega','Onyx','Orbital','Pale','Phantom','Pixel','Plasma','Proto','Pulse',
+  'Quantum','Quartz','Rapid','Raw','Rogue','Ruby','Rust','Sigma','Silent',
+  'Solar','Solid','Sonic','Static','Steel','Storm','Swift','Tidal','Turbo',
+  'Ultra','Umbra','Vector','Velox','Void','Volt','Wave','Wild','Xenon','Zero'];
+
+const NICK_NOUN = ['Badger','Bat','Bear','Beetle','Bison','Boar','Bolt','Byte',
+  'Cat','Cipher','Claw','Cloud','Cobra','Comet','Core','Crane','Crow','Crystal',
+  'Dagger','Data','Deer','Delta','Drone','Eagle','Elk','Falcon','Fang','Ferret',
+  'Finch','Firefly','Flux','Foxtrot','Frog','Gate','Ghost','Grid','Hawk','Helix',
+  'Hornet','Hydra','Jay','Jaguar','Kite','Kraken','Lance','Laser','Lemur','Link',
+  'Lynx','Mantis','Marten','Matrix','Mink','Mole','Moth','Nexus','Node','Otter',
+  'Owl','Panther','Pike','Pixel','Probe','Pulse','Rabbit','Raven','Rhino','Roach',
+  'Robin','Router','Rune','Serpent','Shark','Shrew','Signal','Snail','Snake',
+  'Spider','Squid','Stag','Storm','Swift','Tiger','Token','Viper','Warden',
+  'Wasp','Weasel','Wire','Wolf','Wolverine','Wren','Yak','Zebra'];
+
+// Simple non-crypto hash: djb2 variant
+function _strHash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  return h;
+}
+
+function _browserSeed() {
+  const fp = [navigator.userAgent, navigator.language,
+    screen.width, screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone].join('|');
+  return _strHash(fp);
+}
+
+let _nickOffset = 0;
+
+function suggestNick() {
+  // Re-hash on each offset so both adj and noun scramble independently
+  const h1 = _strHash((_browserSeed() + _nickOffset).toString());
+  const h2 = _strHash(h1.toString());
+  const adj  = NICK_ADJ [h1 % NICK_ADJ.length];
+  const noun = NICK_NOUN[h2 % NICK_NOUN.length];
+  return adj + noun;
+}
+
+function rotateSuggestion() {
+  _nickOffset++;
+  const nick = suggestNick();
+  const real = nick.replace(/([a-z])([A-Z])/g, '$1 $2'); // "SwiftOtter" → "Swift Otter"
+  $('nick').value = nick;
+  $('realname').value = real;
+  $('realname').dataset.suggested = '1';
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
   ws: null,
@@ -277,6 +334,11 @@ function restoreSavedChannels(server) {
     const ch = qp.get('channel');
     if (ch) state.pendingChannel = ch.startsWith('#') ? ch : '#' + ch;
   }
+
+  // Suggest a nick+realname when neither has been pre-filled from saved state
+  if (!$('nick').value) rotateSuggestion();
+
+  $('nick-suggest-btn').addEventListener('click', rotateSuggestion);
 })();
 
 // ── Connect form ─────────────────────────────────────────────────────────────

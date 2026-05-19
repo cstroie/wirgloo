@@ -69,11 +69,14 @@
         </div>
         <div class="field">
           <label for="nick">Nickname</label>
-          <input type="text" id="nick" placeholder="yournick" required>
+          <div class="input-with-btn">
+            <input type="text" id="nick" placeholder="yournick" required>
+            <button type="button" id="nick-suggest-btn" title="Suggest a nick">&#x21BA;</button>
+          </div>
         </div>
         <div class="field">
           <label for="realname">Real Name <span class="field-optional">(optional)</span></label>
-          <input type="text" id="realname" placeholder="Your Name">
+          <input type="text" id="realname" placeholder="Your Name" oninput="this.dataset.suggested=''">
         </div>
         <div class="field">
           <label for="auth-method">Authentication</label>

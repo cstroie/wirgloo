@@ -113,6 +113,15 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 }
 .select-row button:hover { color: var(--error); border-color: var(--error); }
 
+.input-with-btn { display: flex; gap: 6px; }
+.input-with-btn input { flex: 1; min-width: 0; }
+.input-with-btn button {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text-dim); font-size: 1rem; padding: 4px 9px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s; flex-shrink: 0;
+}
+.input-with-btn button:hover { color: var(--accent); border-color: var(--accent); }
+
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
 
