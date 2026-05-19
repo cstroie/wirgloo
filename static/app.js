@@ -1104,6 +1104,8 @@ function canGroup(m, prevNick, prevTs, prevType) {
   const cls = m.type || 'msg';
   // consecutive system-type messages always collapse (different nicks each time)
   if (SYSTEM_TYPES.has(cls) && SYSTEM_TYPES.has(prevType)) return true;
+  // motd lines have no ts — group them whenever they arrive back-to-back
+  if (cls === 'motd' && prevType === 'motd') return true;
   // chat messages group when same nick within 2 minutes
   const chatGroupable = new Set(['msg', 'me', 'mention', 'notice', 'motd', 'whois', 'connecting']);
   return chatGroupable.has(cls) && m.nick && m.nick === prevNick && (m.ts - prevTs) < 120;
