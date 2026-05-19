@@ -55,6 +55,11 @@ function rotateSuggestion() {
   $('nick').value = nick;
   $('realname').value = real;
   $('realname').dataset.suggested = '1';
+  try { localStorage.setItem('wirgloo_default_nick', JSON.stringify({ nick, realname: real, offset: _nickOffset })); } catch {}
+}
+
+function loadDefaultNick() {
+  try { return JSON.parse(localStorage.getItem('wirgloo_default_nick') || 'null'); } catch { return null; }
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -336,7 +341,17 @@ function restoreSavedChannels(server) {
   }
 
   // Suggest a nick+realname when neither has been pre-filled from saved state
-  if (!$('nick').value) rotateSuggestion();
+  if (!$('nick').value) {
+    const saved = loadDefaultNick();
+    if (saved) {
+      _nickOffset = saved.offset;
+      $('nick').value = saved.nick;
+      $('realname').value = saved.realname;
+      $('realname').dataset.suggested = '1';
+    } else {
+      rotateSuggestion();
+    }
+  }
 
   $('nick-suggest-btn').addEventListener('click', rotateSuggestion);
 })();
