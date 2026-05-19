@@ -1162,7 +1162,7 @@ function buildMsgEl(m, target, grouped = false) {
     <span class="body">
       <span class="msg-header${isSentinel ? '' : ' nick-link'}" data-nick="${escHtml(m.nick || '')}">${escHtml(m.nick || '')} · ${ts}</span>
       <span class="nick-col ${self ? 'self' : ''}${isSentinel ? '' : ' nick-link'}" data-nick="${escHtml(m.nick || '')}" style="${nc ? `color:${nc}` : ''}">${escHtml(m.nick || '')}</span>
-      <span class="text">${highlightNicks(renderText(m.text, cls === 'motd'), state.channels.get(state.active)?.nicks)}</span>
+      <span class="text">${highlightNicks(renderText(m.text, cls !== 'msg' && cls !== 'me'), state.channels.get(state.active)?.nicks)}</span>
     </span>`;
   return el;
 }
