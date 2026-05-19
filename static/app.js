@@ -1162,7 +1162,7 @@ function buildMsgEl(m, target, grouped = false) {
     <span class="body">
       <span class="msg-header${isSentinel ? '' : ' nick-link'}" data-nick="${escHtml(m.nick || '')}">${escHtml(m.nick || '')} · ${ts}</span>
       <span class="nick-col ${self ? 'self' : ''}${isSentinel ? '' : ' nick-link'}" data-nick="${escHtml(m.nick || '')}" style="${nc ? `color:${nc}` : ''}">${escHtml(m.nick || '')}</span>
-      <span class="text">${highlightNicks(renderText(m.text), state.channels.get(state.active)?.nicks)}</span>
+      <span class="text">${highlightNicks(renderText(m.text, cls === 'motd'), state.channels.get(state.active)?.nicks)}</span>
     </span>`;
   return el;
 }
@@ -1920,7 +1920,7 @@ function applyMarkdown(s) {
     .replace(/`([^`\n]+)`/g,             '<code>$1</code>');
 }
 
-function renderText(raw) {
+function renderText(raw, noMarkdown=false) {
   const hasIRC = /[\x02\x03\x0f\x11\x1d\x1e\x1f]/.test(raw);
   let bold=false, italic=false, under=false, strike=false, mono=false;
   let fg=null, bg=null;
@@ -1928,7 +1928,7 @@ function renderText(raw) {
 
   const flush = () => {
     if (!buf) return;
-    let s = linkify(hasIRC ? escHtml(buf) : applyMarkdown(escHtml(buf)));
+    let s = linkify((hasIRC || noMarkdown) ? escHtml(buf) : applyMarkdown(escHtml(buf)));
     const st = [];
     if (bold)   st.push('font-weight:bold');
     if (italic) st.push('font-style:italic');
