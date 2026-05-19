@@ -37,7 +37,7 @@ const pingInterval = 90 * time.Second // how often to send a client-initiated PI
 const pingTimeout = 60 * time.Second  // max time to wait for a PONG before declaring the link dead
 
 // Tunable defaults — may be overridden by main before any session is created.
-var WsReconnectWindow = 30 * time.Minute // idle WS window before the IRC connection is torn down
+var WsReconnectWindow = 60 * time.Minute // idle WS window before the IRC connection is torn down
 var BufferMax = 500                      // max IRC messages buffered while the WS is detached
 var ListPreviewSize = 50                 // channels sent to the browser before any filter is applied
 
