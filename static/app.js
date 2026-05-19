@@ -985,13 +985,11 @@ function updateTitle() {
   if (!state.active) {
     label = null;
   } else if (state.active === '*server*') {
-    label = net ? `🖧 ${net}` : null;
+    label = net || null;
   } else if (state.active === '*list*') {
-    label = net ? `☰ ${net}` : '☰ Channel list';
-  } else if (state.active.startsWith('#')) {
-    label = `＃ ${net ? net + ' — ' : ''}${state.active}`;
+    label = net ? `${net} — Channel list` : 'Channel list';
   } else {
-    label = `◉ ${net ? net + ' — ' : ''}${state.active}`;
+    label = net ? `${net} — ${state.active}` : state.active;
   }
   document.title = label ? `${label} — wirgloo` : 'wirgloo';
 }
