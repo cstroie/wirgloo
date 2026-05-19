@@ -145,7 +145,7 @@ func ParseLine(line string) Message {
 	}
 
 	if idx := strings.Index(line, " :"); idx != -1 {
-		msg.Trailing = line[idx+2:]
+		msg.Trailing = strings.ReplaceAll(line[idx+2:], "\r", "")
 		line = line[:idx]
 	}
 
