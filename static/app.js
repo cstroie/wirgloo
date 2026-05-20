@@ -303,6 +303,7 @@ function restoreSavedChannels(server) {
     if (srv.nick)       $('nick').value = srv.nick;
     if (srv.realname)   $('realname').value = srv.realname;
     if (srv.authMethod) { $('auth-method').value = srv.authMethod; $('pass-field').classList.toggle('hidden', srv.authMethod === 'none'); }
+    if (srv.noverify)   { $('tls').checked = true; $('tls').dispatchEvent(new Event('change')); $('noverify').checked = true; }
     if (srv.lastNetwork) {
       const sel = $('network');
       if ([...sel.options].some(o => o.value === srv.lastNetwork)) { sel.value = srv.lastNetwork; applyNetworkSelection(srv.lastNetwork); }
@@ -369,7 +370,7 @@ connectForm.addEventListener('submit', e => {
   const realname   = $('realname').value.trim() || nick;
   if (!server || !nick) return;
   const netVal = $('network').value;
-  saveSrv(server, { nick, realname: $('realname').value.trim() || nick, authMethod, lastNetwork: netVal });
+  saveSrv(server, { nick, realname: $('realname').value.trim() || nick, authMethod, noverify, lastNetwork: netVal });
   if (netVal === 'custom' || netVal.startsWith('saved:')) {
     saveProfile({ server, port, tls, nick });
     renderSavedProfiles();
