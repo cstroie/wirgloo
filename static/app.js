@@ -919,8 +919,8 @@ function updateTargetName(target) {
   const label = target === '*server*' ? (state.servername || state.server) : target;
   let tls = state.connectParams?.tls;
   if (tls === undefined) { try { tls = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null')?.tls; } catch {} }
-  const lock = target === '*server*' ? (tls ? ' 🔒' : ' 🔓') : '';
-  targetName.textContent = label + lock;
+  const lock = target === '*server*' ? (tls ? '🔒 ' : '🔓 ') : '';
+  targetName.textContent = lock + label;
 }
 
 function setActive(target) {
