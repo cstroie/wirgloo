@@ -1303,11 +1303,22 @@ function renderUserlist() {
             const [label, sym] = PREFIX_LABEL[p] || [p, p];
             return `<span class="chan-prefix chan-prefix-${label}" title="${label}">${sym}</span>`;
           }).join('');
-          return `<span class="wi-chan">${prefixHtml}<span class="wi-chan-name">${escHtml(chan)}</span></span>`;
+          return `<span class="wi-chan">${prefixHtml}<a class="wi-chan-name" href="#" data-chan="${escHtml(chan)}">${escHtml(chan)}</a></span>`;
         }).join('');
         rows.push(`<div class="wi-row"><span class="wi-key">In</span><span class="wi-val wi-chans">${chips}</span></div>`);
       }
       info.innerHTML = rows.join('');
+      info.querySelectorAll('a.wi-chan-name').forEach(a => {
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          const ch = a.dataset.chan;
+          if (state.channels.has(ch))
+            setActive(ch);
+          else
+            sendWS({ type: 'join', channel: ch });
+          openPanel(null);
+        });
+      });
       card.appendChild(info);
     }
 
