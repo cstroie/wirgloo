@@ -500,6 +500,12 @@ function handle(msg) {
       updateLagDisplay(null);
       scheduleLagPing(3000); // initial measurement ~3 s after connect
       applyServerMeta(null, null, msg.welcome);
+      if (!wasReconnect) {
+        // fresh connect — drop any channels left over from a previous server
+        const serverMsg = state.channels.get('*server*');
+        state.channels.clear();
+        if (serverMsg) state.channels.set('*server*', serverMsg);
+      }
       if (msg.welcome) appendMsg('*server*', { type: 'motd', nick: '-', text: msg.welcome });
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected to ${state.server} as ${msg.nick}` });
       requestNotifyPermission();
@@ -525,7 +531,7 @@ function handle(msg) {
       resetAutoAway();
       reconnectDelay = 1000;
       state.nick = msg.nick;
-      state.server = localStorage.getItem('wirgloo_session_server') || '';
+      state.server = msg.server || localStorage.getItem('wirgloo_session_server') || '';
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
       updateLagDisplay(null);

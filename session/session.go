@@ -64,6 +64,7 @@ type Session struct {
 	buf        [][]byte        // JSON messages buffered while ws is nil
 	conn       net.Conn        // underlying IRC TCP connection
 	done       chan struct{}   // closed once to signal all goroutines to exit
+	server     string          // original dial address, e.g. "irc.libera.chat"
 	authMethod string          // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
 	authPass   string          // password for the chosen auth method
 	lastPong   time.Time       // wall time of the most recent PONG received
@@ -178,6 +179,7 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 	s.mu.Lock()
 	s.conn = conn
 	s.Nick = nick
+	s.server = server
 	s.authMethod = authMethod
 	s.authPass = pass
 	s.mu.Unlock()
@@ -271,8 +273,9 @@ func (s *Session) SendResumed() {
 	servername := s.servername
 	welcome := s.welcome
 	meta := s.meta
+	server := s.server
 	s.mu.Unlock()
-	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta})
+	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "server": server, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta})
 	s.mu.Lock()
 	delete(s.meta, "admin")
 	s.mu.Unlock()
