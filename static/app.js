@@ -791,7 +791,7 @@ function handle(msg) {
       state.listTotal = msg.total || state.listItems.length;
       state.listShown = msg.shown || state.listItems.length;
       state.listCapped = !!msg.capped;
-      if (state.active === '*list*') renderListMessages();
+      if (state.active === '*list*') { renderListMessages(); updateTargetName('*list*'); }
       break;
 
     case 'topic': {
@@ -916,7 +916,9 @@ function removeChannel(target) {
 }
 
 function updateTargetName(target) {
-  const label = target === '*server*' ? (state.servername || state.server) : target;
+  const label = target === '*server*' ? (state.servername || state.server)
+              : target === '*list*'   ? `Channels${state.listTotal ? ' (' + state.listTotal + ')' : ''}`
+              : target;
   let tls = state.connectParams?.tls;
   if (tls === undefined) { try { tls = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null')?.tls; } catch {} }
   const lock = target === '*server*' ? (tls ? '🔒 ' : '🔓 ') : '';
