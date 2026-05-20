@@ -248,7 +248,8 @@ $('delete-profile-btn').addEventListener('click', () => {
 
 // ── Per-server settings ───────────────────────────────────────────────────────
 // Each server's settings are stored in one key: wirgloo_srv:<server>
-// Global keys: wirgloo_profiles, wirgloo_ignored, wirgloo_session_server
+// Global keys: wirgloo_profiles, wirgloo_ignored
+// Per-tab keys (sessionStorage): wirgloo_session → {server, network}
 
 function srvKey(server) { return `wirgloo_srv:${server}`; }
 
@@ -295,9 +296,11 @@ function restoreSavedChannels(server) {
     const ig = JSON.parse(localStorage.getItem('wirgloo_ignored') || '[]');
     ig.forEach(n => state.ignored.add(n.toLowerCase()));
   } catch {}
-  // pre-fill form from the last session server if known
-  const lastServer = localStorage.getItem('wirgloo_session_server');
-  const lastNet    = !lastServer ? localStorage.getItem('wirgloo_last_network') : null;
+  // pre-fill form from this tab's last session (sessionStorage is per-tab)
+  let tabSession = null;
+  try { tabSession = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null'); } catch {}
+  const lastServer = tabSession?.server || null;
+  const lastNet    = tabSession?.network || null;
   if (lastServer) {
     const srv = loadSrv(lastServer);
     if (srv.nick)       $('nick').value = srv.nick;
@@ -376,7 +379,7 @@ connectForm.addEventListener('submit', e => {
     renderSavedProfiles();
   }
   state.server = server;
-  localStorage.setItem('wirgloo_session_server', server);
+  try { sessionStorage.setItem('wirgloo_session', JSON.stringify({ server, network: netVal })); } catch {}
   state.connectParams = { server, port, nick, realname, tls, noverify, authMethod, pass };
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
@@ -531,7 +534,8 @@ function handle(msg) {
       resetAutoAway();
       reconnectDelay = 1000;
       state.nick = msg.nick;
-      state.server = msg.server || localStorage.getItem('wirgloo_session_server') || '';
+      state.server = msg.server || '';
+      if (state.server) try { sessionStorage.setItem('wirgloo_session', JSON.stringify({ server: state.server })); } catch {}
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
       updateLagDisplay(null);
