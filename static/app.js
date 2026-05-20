@@ -379,7 +379,7 @@ connectForm.addEventListener('submit', e => {
     renderSavedProfiles();
   }
   state.server = server;
-  try { sessionStorage.setItem('wirgloo_session', JSON.stringify({ server, network: netVal })); } catch {}
+  try { sessionStorage.setItem('wirgloo_session', JSON.stringify({ server, network: netVal, tls })); } catch {}
   state.connectParams = { server, port, nick, realname, tls, noverify, authMethod, pass };
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
@@ -912,6 +912,14 @@ function removeChannel(target) {
   renderChannelList();
 }
 
+function updateTargetName(target) {
+  const label = target === '*server*' ? (state.servername || state.server) : target;
+  let tls = state.connectParams?.tls;
+  if (tls === undefined) { try { tls = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null')?.tls; } catch {} }
+  const lock = target === '*server*' ? (tls ? ' 🔒' : ' 🔓') : '';
+  targetName.textContent = label + lock;
+}
+
 function setActive(target) {
   if (!target || !state.channels.has(target)) return;
   openPanel((isDM(target) || target === '*server*') ? 'userlist' : null);
@@ -924,7 +932,7 @@ function setActive(target) {
   renderMessages(target);
   document.getElementById('userlist-panel').classList.toggle('wide', target === '*server*');
   renderUserlist();
-  targetName.textContent = target === '*server*' ? (state.servername || state.server) : target;
+  updateTargetName(target);
   if (isDM(target)) updateDMTopic(target);
   else topicText.innerHTML = renderText(ch.topic || '');
   updateTitle();
@@ -1041,7 +1049,7 @@ function applyServerMeta(network, servername, welcome) {
   const srv = state.channels.get('*server*');
   if (srv && welcome) srv.topic = welcome;
   if (state.active === '*server*') {
-    targetName.textContent = state.servername || state.server;
+    updateTargetName('*server*');
     if (welcome !== null) topicText.innerHTML = renderText(welcome || '');
   }
 }
