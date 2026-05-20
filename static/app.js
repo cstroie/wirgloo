@@ -535,7 +535,10 @@ function handle(msg) {
       reconnectDelay = 1000;
       state.nick = msg.nick;
       state.server = msg.server || '';
-      if (state.server) try { sessionStorage.setItem('wirgloo_session', JSON.stringify({ server: state.server })); } catch {}
+      if (state.server) try {
+        const prev = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null') || {};
+        sessionStorage.setItem('wirgloo_session', JSON.stringify({ ...prev, server: state.server }));
+      } catch {}
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
       updateLagDisplay(null);
