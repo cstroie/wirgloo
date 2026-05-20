@@ -1107,6 +1107,7 @@ const SYSTEM_TYPES = new Set(['system', 'join', 'part', 'quit', 'error', 'connec
 function renderMessages(target) {
   if (target === '*list*') { renderListMessages(); return; }
   const ch = state.channels.get(target);
+  userScrolledUp = false;
   messages.innerHTML = '';
   if (!ch) return;
   let prevNick = null, prevTs = 0, prevType = null;
@@ -1126,11 +1127,10 @@ function appendMsg(target, m) {
   if (ch.messages.length > 2000) ch.messages.shift();
   persistMsg(target, m);
   if (target === state.active) {
-    const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 60;
     const last = messages.lastElementChild;
     const grouped = canGroup(m, last?.dataset.nick, parseFloat(last?.dataset.ts || 0), last?.dataset.msgtype);
     messages.appendChild(buildMsgEl(m, target, grouped));
-    if (atBottom) messages.scrollTop = messages.scrollHeight;
+    if (!userScrolledUp) messages.scrollTop = messages.scrollHeight;
   }
 }
 
@@ -1442,12 +1442,15 @@ messages.addEventListener('click', e => {
   }
 });
 
+let userScrolledUp = false;
 const scrollBottomBtn = $('scroll-bottom');
 messages.addEventListener('scroll', () => {
   const dist = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
   scrollBottomBtn.classList.toggle('visible', dist > 200);
+  userScrolledUp = dist > 60;
 }, { passive: true });
 scrollBottomBtn.addEventListener('click', () => {
+  userScrolledUp = false;
   messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
 });
 $('sidebar-toggle').addEventListener('click', () => {
