@@ -273,6 +273,9 @@ func (s *Session) SendResumed() {
 	meta := s.meta
 	s.mu.Unlock()
 	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta})
+	s.mu.Lock()
+	delete(s.meta, "admin")
+	s.mu.Unlock()
 	s.SendIRC("ADMIN")
 	s.SendIRC("LUSERS")
 }
