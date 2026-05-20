@@ -1115,7 +1115,7 @@ function renderMessages(target) {
     messages.appendChild(buildMsgEl(m, target, grouped));
     prevNick = m.nick || null; prevTs = m.ts || 0; prevType = m.type || 'msg';
   });
-  messages.scrollTop = messages.scrollHeight;
+  requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
 }
 
 function appendMsg(target, m) {
