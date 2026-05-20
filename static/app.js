@@ -1315,7 +1315,7 @@ function renderUserlist() {
           if (state.channels.has(ch))
             setActive(ch);
           else
-            sendWS({ type: 'join', channel: ch });
+            send({ type: 'join', channel: ch });
           openPanel(null);
         });
       });
