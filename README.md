@@ -11,13 +11,17 @@
 
 ## Screenshots
 
-| Connect | Chat |
+| Connect (light) | Connect (dark) |
 |---|---|
-| ![Connect screen](screenshots/connect.png) | ![Chat view](screenshots/chat.png) |
+| ![Connect screen – light theme](screenshots/connect.png) | ![Connect screen – dark theme](screenshots/dark.png) |
 
-| Channel | Channel list |
+| Channel chat | Channel list with filter |
 |---|---|
-| ![Channel view](screenshots/channel.png) | ![Channel list](screenshots/list.png) |
+| ![Active channel with nick list](screenshots/trivia.png) | ![Channel list filtered by keyword](screenshots/doom.png) |
+
+| Direct message & user card | Join channel dialog |
+|---|---|
+| ![DM view with WHOIS panel](screenshots/dm.png) | ![Join channel dialog](screenshots/join.png) |
 
 ---
 
