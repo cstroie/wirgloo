@@ -9,8 +9,15 @@
 
 `scp` the binary to any server, run it, and IRC from any browser — no Node.js, no Docker, no build pipeline, no database. One process, one port.
 
-<!-- screenshot -->
-<!-- ![wirgloo screenshot](docs/screenshot.png) -->
+## Screenshots
+
+| Connect | Chat |
+|---|---|
+| ![Connect screen](screenshots/connect.png) | ![Chat view](screenshots/chat.png) |
+
+| Channel | Channel list |
+|---|---|
+| ![Channel view](screenshots/channel.png) | ![Channel list](screenshots/list.png) |
 
 ---
 
