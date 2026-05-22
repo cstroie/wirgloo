@@ -69,5 +69,6 @@
 
 ### Programming
  - [X] Document the websocket protocol messages
- - [ ] Add a screenshot
+ - [X] Add a screenshot
+ - [ ] Configuration panel: color scheme, markdown parsing
 
