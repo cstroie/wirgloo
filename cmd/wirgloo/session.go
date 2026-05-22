@@ -655,6 +655,17 @@ func (s *Session) ircLoop(lines <-chan string) {
 			L.Warn("nick in use", "session", s.ID, "nick", s.Nick)
 			s.sendWS(map[string]any{"type": "error", "text": "Nickname already in use"})
 
+		default:
+			// Forward unhandled 4xx/5xx numerics as errors so they are visible.
+			if len(msg.Command) == 3 && msg.Command[0] >= '4' && msg.Command[0] <= '5' {
+				text := msg.Trailing
+				if text == "" {
+					text = strings.Join(msg.Params[1:], " ")
+				}
+				L.Debug("IRC error numeric", "session", s.ID, "cmd", msg.Command, "text", text)
+				s.sendWS(map[string]any{"type": "error", "text": text})
+			}
+
 		case "ERROR":
 			L.Error("IRC ERROR", "session", s.ID, "text", msg.Trailing)
 			s.sendWS(map[string]any{"type": "error", "text": msg.Trailing})
