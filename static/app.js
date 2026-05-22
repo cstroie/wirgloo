@@ -829,15 +829,16 @@ function handle(msg) {
       const w = state.whoisUsers.get(msg.nick) || { realname:'', ident:'', host:'', server:'', location:'', idleSecs:0, account:'', channels:[], secure:false, ircop:false, bot:false, away:false, awayMsg:'' };
       switch (msg.field) {
         case 'user':     w.ident = msg.ident; w.host = msg.host; w.realname = msg.realname;
-                         w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
+                         if (!w.bot) w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
                          break;
         case 'server':   w.server = msg.server; w.location = msg.location; break;
         case 'ircop':    w.ircop = true; break;
         case 'idle':     w.idleSecs = parseInt(msg.seconds) || 0; break;
         case 'channels': w.channels = msg.channels; break;
         case 'account':  w.account = msg.account;
-                         w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
+                         if (!w.bot) w.bot = /bot|serv/i.test(w.realname) || (w.ident.startsWith('~') && /bot|serv/i.test(w.host + w.account));
                          break;
+        case 'bot':      w.bot = true; break;
         case 'secure':   w.secure = true; break;
       }
       state.whoisUsers.set(msg.nick, w);
@@ -961,6 +962,10 @@ function handle(msg) {
       }
       break;
     }
+
+    case 'youreoper':
+      appendMsg(state.active || '*server*', { type: 'system', nick: '--', text: `You are now an IRC operator: ${msg.text}` });
+      break;
 
     case 'error':
       if (!state.connected) { onConnectFailed(msg.text); break; }
@@ -1822,6 +1827,15 @@ function handleCommand(raw) {
         appendMsg(state.active, { type: 'system', nick: '--', text: `No longer ignoring ${arg}` });
       }
       break;
+    case 'STATS':
+      send({ type: 'raw', line: arg ? `STATS ${arg}` : 'STATS' });
+      break;
+    case 'OPER': {
+      const [ouser, opass] = arg.split(/\s+/, 2);
+      if (ouser && opass) send({ type: 'raw', line: `OPER ${ouser} ${opass}` });
+      else appendMsg(state.active, { type: 'error', nick: '!', text: 'Usage: /oper <username> <password>' });
+      break;
+    }
     case 'HELP': {
       const cmds = [
         '/join <#channel> [key]  — join a channel  (/j)',
@@ -1844,6 +1858,8 @@ function handleCommand(raw) {
         '/unignore <nick>        — stop ignoring nick',
         '/slap <nick>            — the classics never die',
         '/clear                  — clear message buffer',
+        '/stats [query]          — query server statistics (u=uptime, l=links, m=commands…)',
+        '/oper <user> <pass>     — authenticate as IRC operator',
         '/raw <line>             — send raw IRC line  (/q, /quote)',
         '/help                   — show this list',
       ];

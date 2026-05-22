@@ -565,6 +565,12 @@ func (s *Session) ircLoop(lines <-chan string) {
 			}
 			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "account", "account": msg.Params[2]})
 
+		case "335": // RPL_WHOISBOT (UnrealIRCd and others)
+			if len(msg.Params) < 2 {
+				continue
+			}
+			s.sendWS(map[string]any{"type": "whois_data", "nick": msg.Params[1], "field": "bot"})
+
 		case "671": // RPL_WHOISSECURE
 			if len(msg.Params) < 2 {
 				continue
@@ -632,6 +638,18 @@ func (s *Session) ircLoop(lines <-chan string) {
 				continue
 			}
 			s.sendWS(map[string]any{"type": "names_end", "channel": msg.Params[1]})
+
+		case "211", "212", "213", "214", "215", "216", "217", "218", // RPL_STATS*
+			"219",                                                       // RPL_ENDOFSTATS
+			"241", "242", "243", "244", "246", "247", "250":             // RPL_STATS* continued
+			text := msg.Trailing
+			if text == "" {
+				text = strings.Join(msg.Params[1:], " ")
+			}
+			s.sendWS(map[string]any{"type": "motd", "text": text})
+
+		case "381": // RPL_YOUREOPER
+			s.sendWS(map[string]any{"type": "youreoper", "text": msg.Trailing})
 
 		case "433": // ERR_NICKNAMEINUSE
 			L.Warn("nick in use", "session", s.ID, "nick", s.Nick)

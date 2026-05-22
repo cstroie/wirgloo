@@ -15,6 +15,11 @@
   --part:      #f87171;
   --notice:    #60a5fa;
   --me:        #c084fc;
+  --btn-info:    #60a5fa;
+  --btn-ok:      #4ade80;
+  --btn-warn:    #fb923c;
+  --btn-meta:    #a78bfa;
+  --btn-net:     #2dd4bf;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
   --radius:    8px;
   --sidebar-w: clamp(170px, 13vw, 260px);
@@ -38,6 +43,11 @@
     --text-head: #4b5563;
     --mention:   #6d28d9;
     --error:     #dc2626;
+    --btn-info:  #2563eb;
+    --btn-ok:    #059669;
+    --btn-warn:  #d97706;
+    --btn-meta:  #7c3aed;
+    --btn-net:   #0d9488;
     --join:      #059669;
     --part:      #dc2626;
     --notice:    #2563eb;
@@ -241,6 +251,12 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 }
 #sidebar-footer button:hover { color: var(--text); background: var(--bg3); }
 #sidebar-footer #disconnect-btn:hover { color: var(--error); background: rgba(248,113,113,0.1); }
+#sidebar-footer #list-btn  { color: var(--btn-info); }
+#sidebar-footer #join-btn  { color: var(--btn-ok);   }
+#sidebar-footer #away-btn  { color: var(--btn-warn); }
+#sidebar-footer #list-btn:hover  { background: color-mix(in srgb, var(--btn-info) 10%, transparent); }
+#sidebar-footer #join-btn:hover  { background: color-mix(in srgb, var(--btn-ok)   10%, transparent); }
+#sidebar-footer #away-btn:hover  { background: color-mix(in srgb, var(--btn-warn) 10%, transparent); }
 
 #main {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
@@ -402,6 +418,22 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 }
 #userlist-footer button:hover { color: var(--text); background: var(--bg3); }
 #userlist-footer button.danger:hover { color: var(--error); background: rgba(248,113,113,0.1); }
+#userlist-footer #srv-ping     { color: var(--btn-net);  }
+#userlist-footer #srv-help     { color: var(--btn-info); }
+#userlist-footer #srv-ping:hover { background: color-mix(in srgb, var(--btn-net)  10%, transparent); }
+#userlist-footer #srv-help:hover { background: color-mix(in srgb, var(--btn-info) 10%, transparent); }
+#userlist-footer #whois-btn    { color: var(--btn-info); }
+#userlist-footer #ping-btn     { color: var(--btn-net);  }
+#userlist-footer #version-btn  { color: var(--btn-meta); }
+#userlist-footer #uf-ignore    { color: var(--btn-warn); }
+#userlist-footer #uf-op,
+#userlist-footer #uf-voice     { color: var(--btn-ok);   }
+#userlist-footer #whois-btn:hover   { background: color-mix(in srgb, var(--btn-info) 10%, transparent); }
+#userlist-footer #ping-btn:hover    { background: color-mix(in srgb, var(--btn-net)  10%, transparent); }
+#userlist-footer #version-btn:hover { background: color-mix(in srgb, var(--btn-meta) 10%, transparent); }
+#userlist-footer #uf-ignore:hover   { background: color-mix(in srgb, var(--btn-warn) 10%, transparent); }
+#userlist-footer #uf-op:hover,
+#userlist-footer #uf-voice:hover    { background: color-mix(in srgb, var(--btn-ok)   10%, transparent); }
 .userlist-footer-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .dm-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 2px; }
 .user-badge {
