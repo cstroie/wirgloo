@@ -211,6 +211,7 @@ function loadLog(server, target) {
   if (urlSession) {
     state.sessionId = urlSession;
     connectScreen.classList.add('hidden');
+    chatScreen.classList.remove('hidden');
     restoreScreen.classList.remove('hidden');
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
