@@ -113,6 +113,24 @@ func wsHandler(reg *Registry) http.HandlerFunc {
 	}
 }
 
+// withCacheHeaders wraps a handler and sets Cache-Control based on file type.
+// HTML gets no-cache so a redeployed index.html is always revalidated.
+// JS, CSS, and SVG get a one-week max-age; the ETag from FileServer handles
+// revalidation so clients never serve stale bytes after a redeploy.
+func withCacheHeaders(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, ".js"),
+			strings.HasSuffix(r.URL.Path, ".css"),
+			strings.HasSuffix(r.URL.Path, ".svg"):
+			w.Header().Set("Cache-Control", "public, max-age=604800")
+		default:
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 // sanitize strips CR and LF from a string to prevent IRC command injection.
 func sanitize(s string) string {
 	return strings.NewReplacer("\r", "", "\n", "").Replace(s)

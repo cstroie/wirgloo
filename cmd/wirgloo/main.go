@@ -70,14 +70,14 @@ func main() {
 	if *dev {
 		// Serve directly from disk so edits are visible without restarting.
 		L.Info("serving static files from disk")
-		http.Handle(staticPrefix, http.StripPrefix(*base, http.FileServer(http.Dir("static"))))
+		http.Handle(staticPrefix, http.StripPrefix(*base, withCacheHeaders(http.FileServer(http.Dir("static")))))
 	} else {
 		sub, err := fs.Sub(wirgloo.StaticFiles, "static")
 		if err != nil {
 			L.Error("embed fs error", "err", err)
 			os.Exit(1)
 		}
-		http.Handle(staticPrefix, http.StripPrefix(*base, http.FileServer(http.FS(sub))))
+		http.Handle(staticPrefix, http.StripPrefix(*base, withCacheHeaders(http.FileServer(http.FS(sub)))))
 	}
 
 	L.Info("wirgloo starting", "version", version, "addr", *addr)
