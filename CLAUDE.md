@@ -41,7 +41,7 @@ Browser ──WebSocket──► ws.Handler  ──dispatch──► session.Ses
 
 **`irc/client.go`** — pure IRC protocol: `Dial`, `Handshake`, `ReadLoop`, `ParseLine`. No state. `ParseLine` always appends the trailing parameter into `Params`, so callers can index `msg.Params` uniformly.
 
-**`static/app.js`** — single-file vanilla JS SPA, no framework. State lives in the `state` object at the top. All incoming WebSocket messages are routed through `handle(msg)`. User slash-commands are parsed in `handleCommand()`. No build step.
+**`static/app.js`** — single-file vanilla JS SPA, no framework. State lives in the `state` object at the top. All incoming WebSocket messages are routed through `handle(msg)`. User slash-commands are parsed in `handleCommand()`. Chat history is persisted to IndexedDB and replayed on reconnect or fresh connect to a known server. No build step.
 
 ### WebSocket message protocol
 
@@ -54,6 +54,20 @@ Browser → server types (dispatched in `ws/handler.go`): `connect`, `disconnect
 `Registry` tracks all live sessions by ID. On WebSocket disconnect, `Detach` nulls the WS pointer and starts a 30-minute timer — the IRC connection stays alive. If the browser reconnects within that window (same `?s=<id>` URL param), `Resume` reattaches and flushes the message buffer (capped at 500 entries). After 30 minutes, the session is torn down.
 
 `done` is a channel closed once to signal all goroutines for a session to exit. `Close()` closes `done` and the TCP connection.
+
+### Browser storage
+
+| Key | Store | Contents |
+|---|---|---|
+| `wirgloo:profiles` | localStorage | saved connection profiles |
+| `wirgloo:srv:<server>` | localStorage | per-server state: nick, channels, DMs, auth prefs |
+| `wirgloo:srv:last` | localStorage | last-used server/network/TLS (connect form pre-fill only) |
+| `wirgloo:ignored` | localStorage | ignored nick list |
+| `wirgloo` (IndexedDB) | IndexedDB | chat log messages, object store `messages`, index `by_target` on `[server, target]` |
+
+Chat logs use IndexedDB (`getDB()` / `persistMsg()` / `preloadLogs(server)`). On session resume or fresh connect, `preloadLogs(server)` loads up to 500 messages per channel into `msgCache` (in-memory Map) so `loadLog()` stays synchronous. `persistMsg()` writes to IndexedDB asynchronously (fire and forget) and updates `msgCache` immediately.
+
+The `resumed` message from the server provides the server hostname; `restoreChannelsWithHistory(server)` uses it to preload history before rendering channels. No server identity is stored client-side between sessions.
 
 ### Auth flow
 
