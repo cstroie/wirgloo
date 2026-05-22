@@ -154,20 +154,24 @@ fetch('/version').then(r => r.json()).then(v => {
     let tabSession = null;
     try { tabSession = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null'); } catch {}
     const server = tabSession?.server;
-    // Load channels with their message history immediately
-    if (server) {
-      restoreChannelsWithHistory(server);
-    }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
-    state.ws = ws;
-    ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
-    ws.onerror = () => {};
-    ws.onclose = () => {
-      restoreScreen.classList.add('hidden');
-      if (state.sessionId || state.connectParams) scheduleReconnect();
-      else connectScreen.classList.remove('hidden');
-    };
+    function openRestoredWS() {
+      const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
+      state.ws = ws;
+      ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
+      ws.onerror = () => {};
+      ws.onclose = () => {
+        restoreScreen.classList.add('hidden');
+        if (state.sessionId || state.connectParams) scheduleReconnect();
+        else connectScreen.classList.remove('hidden');
+      };
+    }
+    // Load history from IndexedDB before connecting so channels exist when server messages arrive
+    if (server) {
+      restoreChannelsWithHistory(server).then(openRestoredWS);
+    } else {
+      openRestoredWS();
+    }
   }
 }
 
@@ -297,8 +301,9 @@ function restoreSavedChannels(server) {
   renderChannelList();
 }
 
-// Restore channels with full message history from localStorage (on browser reload/resume)
-function restoreChannelsWithHistory(server) {
+// Restore channels with full message history from IndexedDB (on browser reload/resume)
+async function restoreChannelsWithHistory(server) {
+  await preloadLogs(server);
   state.server = server;
   const srv = loadSrv(server);
   // Restore channels with their saved message history
@@ -596,20 +601,21 @@ function handle(msg) {
       scheduleLagPing(3000);
       if (msg.meta) state.serverMeta = msg.meta;
       applyServerMeta(msg.network, msg.servername, msg.welcome);
-      restoreChannelsWithHistory(state.server);
-      // ensure any channels the server knows about are present and marked live
-      (msg.channels || []).forEach(ch => {
-        const k = chanKey(ch);
-        if (!state.channels.has(k))
-          state.channels.set(k, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: false });
-        else
-          state.channels.get(k).offline = false;
+      const resumedChannels = msg.channels || [];
+      restoreChannelsWithHistory(state.server).then(() => {
+        resumedChannels.forEach(ch => {
+          const k = chanKey(ch);
+          if (!state.channels.has(k))
+            state.channels.set(k, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: false });
+          else
+            state.channels.get(k).offline = false;
+        });
+        renderChannelList();
+        setActive('*server*');
+        restoreScreen.classList.add('hidden');
+        chatScreen.classList.remove('hidden');
+        appendMsg('*server*', { type: 'system', nick: '--', text: 'Session restored' });
       });
-      renderChannelList();
-      setActive('*server*');
-      restoreScreen.classList.add('hidden');
-      chatScreen.classList.remove('hidden');
-      appendMsg('*server*', { type: 'system', nick: '--', text: 'Session restored' });
       break;
     }
 
@@ -917,26 +923,66 @@ function handle(msg) {
   }
 }
 
-// ── Chat log persistence ──────────────────────────────────────────────────────
-const LOG_MAX   = 100;
+// ── Chat log persistence (IndexedDB) ─────────────────────────────────────────
+const LOG_MAX   = 500;
 const LOG_TYPES = new Set(['msg', 'me', 'notice', 'join', 'part', 'quit', 'system']);
 
-function logKey(server, target) {
-  return `wirgloo:log:${server}:${target}`;
+let _idb = null;
+function getDB() {
+  if (_idb) return Promise.resolve(_idb);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('wirgloo', 1);
+    req.onupgradeneeded = e => {
+      const store = e.target.result.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
+      store.createIndex('by_target', ['server', 'target'], { unique: false });
+    };
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+// In-memory cache populated by preloadLogs; loadLog reads from it synchronously.
+const msgCache = new Map();
+function msgCacheKey(server, target) { return `${server}\0${target}`; }
+
+async function preloadLogs(server) {
+  msgCache.clear();
+  try {
+    const db = await getDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('messages', 'readonly');
+      const req = tx.objectStore('messages').index('by_target')
+        .getAll(IDBKeyRange.bound([server, ''], [server, '￿']));
+      req.onsuccess = e => {
+        const byTarget = new Map();
+        for (const row of e.target.result) {
+          const k = msgCacheKey(server, row.target);
+          if (!byTarget.has(k)) byTarget.set(k, []);
+          byTarget.get(k).push({ type: row.type, nick: row.nick, text: row.text, ts: row.ts });
+        }
+        for (const [k, msgs] of byTarget) msgCache.set(k, msgs.slice(-LOG_MAX));
+        resolve();
+      };
+      req.onerror = e => reject(e.target.error);
+    });
+  } catch (err) { console.warn('IndexedDB preload failed', err); }
 }
 
 function persistMsg(target, m) {
   if (!LOG_TYPES.has(m.type)) return;
-  const key = logKey(state.server, target);
-  let log;
-  try { log = JSON.parse(localStorage.getItem(key) || '[]'); } catch { log = []; }
-  log.push(m);
-  if (log.length > LOG_MAX) log.splice(0, log.length - LOG_MAX);
-  try { localStorage.setItem(key, JSON.stringify(log)); } catch { console.warn('localStorage quota exceeded — chat log not saved'); }
+  const k = msgCacheKey(state.server, target);
+  if (!msgCache.has(k)) msgCache.set(k, []);
+  const arr = msgCache.get(k);
+  arr.push(m);
+  if (arr.length > LOG_MAX) arr.splice(0, arr.length - LOG_MAX);
+  getDB().then(db => {
+    const tx = db.transaction('messages', 'readwrite');
+    tx.objectStore('messages').add({ server: state.server, target, type: m.type, nick: m.nick, text: m.text, ts: m.ts });
+  }).catch(err => console.warn('IndexedDB write failed', err));
 }
 
 function loadLog(server, target) {
-  try { return JSON.parse(localStorage.getItem(logKey(server, target)) || '[]'); } catch { return []; }
+  return msgCache.get(msgCacheKey(server, target)) || [];
 }
 
 // ── Channels ──────────────────────────────────────────────────────────────────
