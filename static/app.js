@@ -212,25 +212,16 @@ function loadLog(server, target) {
     state.sessionId = urlSession;
     connectScreen.classList.add('hidden');
     restoreScreen.classList.remove('hidden');
-    const server = localStorage.getItem(`wirgloo:sid:${urlSession}`) || null;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    function openRestoredWS() {
-      const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
-      state.ws = ws;
-      ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
-      ws.onerror = () => {};
-      ws.onclose = () => {
-        restoreScreen.classList.add('hidden');
-        if (state.sessionId || state.connectParams) scheduleReconnect();
-        else connectScreen.classList.remove('hidden');
-      };
-    }
-    // Load history from IndexedDB before connecting so channels exist when server messages arrive
-    if (server) {
-      restoreChannelsWithHistory(server).then(openRestoredWS);
-    } else {
-      openRestoredWS();
-    }
+    const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
+    state.ws = ws;
+    ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
+    ws.onerror = () => {};
+    ws.onclose = () => {
+      restoreScreen.classList.add('hidden');
+      if (state.sessionId || state.connectParams) scheduleReconnect();
+      else connectScreen.classList.remove('hidden');
+    };
   }
 }
 
@@ -321,7 +312,6 @@ $('delete-profile-btn').addEventListener('click', () => {
 // Each server's settings are stored in one key: wirgloo:srv:<server>
 // Global keys: wirgloo:profiles, wirgloo:ignored
 // Last connection (form pre-fill only): wirgloo:srv:last → {server, network, tls}
-// Per-session server lookup: wirgloo:sid:<sessionId> → server
 
 function srvKey(server) { return `wirgloo:srv:${server}`; }
 
@@ -607,7 +597,6 @@ function handle(msg) {
       resetAutoAway();
       state.sessionId = msg.session;
       state.nick = msg.nick;
-      try { localStorage.setItem(`wirgloo:sid:${msg.session}`, state.server); } catch {}
       restoreScreen.classList.add('hidden');
       history.replaceState(null, '', '?s=' + msg.session);
       reconnectDelay = 1000;
@@ -653,8 +642,6 @@ function handle(msg) {
       reconnectDelay = 1000;
       state.nick = msg.nick;
       state.server = msg.server || '';
-      if (state.server && state.sessionId)
-        try { localStorage.setItem(`wirgloo:sid:${state.sessionId}`, state.server); } catch {}
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
       updateLagDisplay(null);
