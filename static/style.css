@@ -10,6 +10,12 @@
   --text-dim:  #6b7280;
   --text-head: #9ca3af;
   --mention:   #a78bfa;
+  --dm-accent:     #2dd4bf;
+  --dm-accent-bg:  rgba(45,212,191,0.12);
+  --srv-accent:    #a78bfa;
+  --srv-accent-bg: rgba(167,139,250,0.12);
+  --lst-accent:    #60a5fa;
+  --lst-accent-bg: rgba(96,165,250,0.12);
   --error:     #f87171;
   --join:      #34d399;
   --part:      #f87171;
@@ -42,6 +48,12 @@
     --text-dim:  #6b7280;
     --text-head: #4b5563;
     --mention:   #6d28d9;
+    --dm-accent:     #0d9488;
+    --dm-accent-bg:  rgba(13,148,136,0.1);
+    --srv-accent:    #7c3aed;
+    --srv-accent-bg: rgba(124,58,237,0.1);
+    --lst-accent:    #2563eb;
+    --lst-accent-bg: rgba(37,99,235,0.1);
     --error:     #dc2626;
     --btn-info:  #2563eb;
     --btn-ok:    #059669;
@@ -223,8 +235,17 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   content: ''; position: absolute; left: -6px; top: 50%; transform: translateY(-50%);
   width: 3px; height: 60%; background: var(--accent); border-radius: 0 3px 3px 0;
 }
-.chan-item.unread { color: var(--text); font-weight: bold; }
+.chan-item.dm.active      { background: var(--dm-accent-bg);  color: var(--dm-accent);  }
+.chan-item.dm.active::before  { background: var(--dm-accent);  }
+.chan-item.srv.active     { background: var(--srv-accent-bg); color: var(--srv-accent); }
+.chan-item.srv.active::before { background: var(--srv-accent); }
+.chan-item.lst.active     { background: var(--lst-accent-bg); color: var(--lst-accent); }
+.chan-item.lst.active::before { background: var(--lst-accent); }
+.chan-item.unread  { color: var(--text);    font-weight: bold; }
 .chan-item.mention { color: var(--mention); font-weight: bold; }
+.chan-item.dm.unread,  .chan-item.dm.mention  { color: var(--dm-accent);  }
+.chan-item.srv.unread, .chan-item.srv.mention { color: var(--srv-accent); }
+.chan-item.lst.unread, .chan-item.lst.mention { color: var(--lst-accent); }
 .chan-item.offline { color: var(--text-dim); font-style: italic; opacity: 0.6; }
 .chan-item.hidden { display: none; }
 .chan-item .unread-badge {

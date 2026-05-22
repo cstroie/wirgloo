@@ -1166,7 +1166,11 @@ function renderChannelList() {
   allTargets.forEach(target => {
     const ch = state.channels.get(target);
     const el = document.createElement('div');
+    const isDM  = target !== '*server*' && target !== '*list*' && !target.startsWith('#');
+    const isSrv = target === '*server*';
+    const isLst = target === '*list*';
     el.className = 'chan-item' +
+      (isDM ? ' dm' : isSrv ? ' srv' : isLst ? ' lst' : '') +
       (target === state.active ? ' active' : '') +
       (ch.hidden ? ' hidden' : '') +
       (ch.offline ? ' offline' : '') +
@@ -1199,7 +1203,11 @@ function renderChannelList() {
       }
       if (ch.offline) {
         openPanel(null);
-        send({ type: 'join', channel: target });
+        if (target.match(/^[#&!+]/)) {
+          send({ type: 'join', channel: target });
+        } else {
+          openDM(target);
+        }
       } else {
         // Unhide *list* when it's clicked
         if (target === '*list*') ch.hidden = false;
@@ -1322,6 +1330,8 @@ function updateDMTopic(nick) {
 
 function openDM(nick, fromChannel) {
   ensureChannel(nick);
+  const dmCh = state.channels.get(chanKey(nick));
+  if (dmCh) dmCh.offline = false;
   setActive(nick);
   if (fromChannel) { state.dmOriginChannel = fromChannel; renderUserlist(); }
   saveDMs(state.server);
