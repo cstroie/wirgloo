@@ -68,9 +68,8 @@ Browser → server types (dispatched in `handler.go`): `connect`, `disconnect`, 
 | Key | Store | Contents |
 |---|---|---|
 | `wirgloo:profiles` | localStorage | saved connection profiles |
-| `wirgloo:srv:<server>` | localStorage | per-server state: nick, channels, DMs, auth prefs |
+| `wirgloo:srv:<server>` | localStorage | per-server state: nick, channels, DMs, ignored nicks, auth prefs |
 | `wirgloo:srv:last` | localStorage | last-used server/network/TLS (connect form pre-fill only) |
-| `wirgloo:ignored` | localStorage | ignored nick list |
 | `wirgloo` (IndexedDB) | IndexedDB | chat log messages, object store `messages`, index `by_target` on `[server, target]` |
 
 Chat logs use IndexedDB (`getDB()` / `persistMsg()` / `preloadLogs(server)`). On session resume or fresh connect, `preloadLogs(server)` loads up to 500 messages per channel into `msgCache` (in-memory Map) so `loadLog()` stays synchronous. `persistMsg()` writes to IndexedDB asynchronously (fire and forget) and updates `msgCache` immediately.

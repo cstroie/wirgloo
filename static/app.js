@@ -315,7 +315,7 @@ $('delete-profile-btn').addEventListener('click', () => {
 
 // ── Per-server settings ───────────────────────────────────────────────────────
 // Each server's settings are stored in one key: wirgloo:srv:<server>
-// Global keys: wirgloo:profiles, wirgloo:ignored
+// Global keys: wirgloo:profiles
 // Last connection (form pre-fill only): wirgloo:srv:last → {server, network, tls}
 
 function srvKey(server) { return `wirgloo:srv:${server}`; }
@@ -332,7 +332,12 @@ function saveSrv(server, patch) {
 }
 
 function saveIgnored() {
-  localStorage.setItem('wirgloo:ignored', JSON.stringify([...state.ignored]));
+  if (state.server) saveSrv(state.server, { ignored: [...state.ignored] });
+}
+
+function loadIgnored(server) {
+  state.ignored.clear();
+  (loadSrv(server).ignored || []).forEach(n => state.ignored.add(n.toLowerCase()));
 }
 
 function saveChannels(server) {
@@ -394,10 +399,6 @@ async function restoreChannelsWithHistory(server) {
 // Populate connect form from per-server settings (or fallback to last-used server).
 (function init() {
   renderSavedProfiles();
-  try {
-    const ig = JSON.parse(localStorage.getItem('wirgloo:ignored') || '[]');
-    ig.forEach(n => state.ignored.add(n.toLowerCase()));
-  } catch {}
   // pre-fill form from the last connection
   let tabSession = null;
   try { tabSession = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null'); } catch {}
@@ -620,6 +621,7 @@ function handle(msg) {
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected to ${state.server} as ${msg.nick}` });
       requestNotifyPermission();
       preloadLogs(state.server).then(() => {
+        loadIgnored(state.server);
         restoreSavedChannels(state.server);
         if (!state.channels.has('*list*')) {
           state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
@@ -654,6 +656,7 @@ function handle(msg) {
       if (msg.meta) state.serverMeta = msg.meta;
       applyServerMeta(msg.network, msg.servername, msg.welcome);
       const resumedChannels = msg.channels || [];
+      loadIgnored(state.server);
       restoreChannelsWithHistory(state.server).then(() => {
         resumedChannels.forEach(ch => {
           const k = chanKey(ch);
