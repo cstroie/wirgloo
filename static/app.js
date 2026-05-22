@@ -1,5 +1,9 @@
 'use strict';
 
+// Base path derived from the current page URL so the app works under a reverse
+// proxy sub-path (e.g. /wirgloo/) without any server-side injection.
+const BASE_PATH = location.pathname.replace(/\/[^/]*$/, '');
+
 // ── Nick suggestion ───────────────────────────────────────────────────────────
 const NICK_ADJ  = ['Acid','Aero','Amber','Arc','Ash','Astro','Atomic','Azure',
   'Binary','Blaze','Bright','Brisk','Calm','Carbon','Chrome','Circuit','Cobalt',
@@ -214,7 +218,7 @@ function loadLog(server, target) {
     chatScreen.classList.remove('hidden');
     restoreScreen.classList.remove('hidden');
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
+    const ws = new WebSocket(`${proto}://${location.host}${BASE_PATH}/ws?session=${urlSession}`);
     state.ws = ws;
     ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
     ws.onerror = () => {};
@@ -512,7 +516,7 @@ function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
     state.ws = null;
   }
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  const ws = new WebSocket(`${proto}://${location.host}${BASE_PATH}/ws`);
   state.ws = ws;
 
   ws.onopen = () => {

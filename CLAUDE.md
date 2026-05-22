@@ -18,7 +18,7 @@ Run in development mode so static files are served from disk (no rebuild needed 
 ./wirgloo -dev -log-level debug
 ```
 
-Production binary embeds `static/` at compile time via `//go:embed static/*` in `main.go`.
+Production binary embeds `static/` at compile time via `//go:embed static/*` in `embed.go` (root package).
 
 ## Architecture
 
@@ -27,19 +27,27 @@ The server is a single Go binary with no external runtime dependencies. It has t
 ### Request flow
 
 ```
-Browser ──WebSocket──► ws.Handler  ──dispatch──► session.Session.SendIRC
-                                  ◄──sendWS────  session.Session.ircLoop ◄── irc.ReadLoop
+Browser ──WebSocket──► wsHandler  ──dispatch──► Session.SendIRC
+                                 ◄──sendWS────  Session.ircLoop ◄── ircReadLoop
 ```
 
-**`ws/handler.go`** — upgrades HTTP to WebSocket, reads JSON `inMsg` frames from the browser, calls `dispatch()` which maps `msg.Type` strings to `Session` methods or raw IRC commands. Unknown message types are silently ignored.
+All server-side Go lives in `cmd/wirgloo/` as `package main`:
 
-**`session/session.go`** — the core. One `Session` per browser tab. Owns the IRC `net.Conn`, the WebSocket `*websocket.Conn`, and four goroutines:
+**`handler.go`** — upgrades HTTP to WebSocket, reads JSON `inMsg` frames from the browser, calls `dispatch()` which maps `msg.Type` strings to `Session` methods or raw IRC commands. Unknown message types are silently ignored.
+
+**`session.go`** — the core. One `Session` per browser tab. Owns the IRC `net.Conn`, the WebSocket `*websocket.Conn`, and four goroutines:
 - `ircLoop` — reads lines from the IRC server, parses them, emits JSON to the browser via `sendWS`
 - `sendLoop` — token-bucket rate limiter (burst 5, 3 lines/sec) draining `sendQ`; bypassed by `writeNow` for PONG/PING/QUIT
 - `pingLoop` — client-initiated PING every 90 s; kills the session if no PONG within 60 s
-- `irc.ReadLoop` (from irc package) — reads raw lines into a channel, closed on disconnect
+- `ircReadLoop` — reads raw lines into a channel, closed on disconnect
 
-**`irc/client.go`** — pure IRC protocol: `Dial`, `Handshake`, `ReadLoop`, `ParseLine`. No state. `ParseLine` always appends the trailing parameter into `Params`, so callers can index `msg.Params` uniformly.
+**`client.go`** — pure IRC protocol: `ircDial`, `ircHandshake`, `ircReadLoop`, `ircParseLine`. No state. `ircParseLine` always appends the trailing parameter into `Params`, so callers can index `msg.Params` uniformly.
+
+**`logger.go`** — package-level `L *slog.Logger` and `initLogger()`.
+
+**`main.go`** — entry point. Parses flags, wires up HTTP routes, starts the server.
+
+**`embed.go`** (root package `wirgloo`) — exports `StaticFiles embed.FS` so `cmd/wirgloo` can embed `static/` at the repo root without needing the assets alongside the command source.
 
 **`static/app.js`** — single-file vanilla JS SPA, no framework. State lives in the `state` object at the top. All incoming WebSocket messages are routed through `handle(msg)`. User slash-commands are parsed in `handleCommand()`. Chat history is persisted to IndexedDB and replayed on reconnect or fresh connect to a known server. No build step.
 
@@ -47,7 +55,7 @@ Browser ──WebSocket──► ws.Handler  ──dispatch──► session.Ses
 
 JSON objects with a `"type"` field. Server → browser types: `connected`, `resumed`, `session_expired`, `connect_error`, `disconnected`, `message`, `notice`, `join`, `part`, `nick`, `quit`, `kick`, `mode`, `topic`, `invite`, `names_chunk`, `names_end`, `whois`, `away`, `away_status`, `motd`, `isupport_prefix`, `list_start`, `list_item`, `list_end`, `error`.
 
-Browser → server types (dispatched in `ws/handler.go`): `connect`, `disconnect`, `join`, `part`, `message`, `nick`, `raw`.
+Browser → server types (dispatched in `handler.go`): `connect`, `disconnect`, `join`, `part`, `message`, `nick`, `raw`.
 
 ### Session lifecycle & reconnection
 

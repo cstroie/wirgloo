@@ -8,7 +8,7 @@ VERSION     := $(shell date +%y%m%d)
 all: build
 
 build:
-	go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY) .
+	go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY) ./cmd/wirgloo
 
 install: build
 	install -Dm755 $(BINARY) $(PREFIX)/bin/$(BINARY)

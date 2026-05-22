@@ -4,11 +4,11 @@
 // Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Package irc handles the low-level IRC protocol: dialing the server,
+// client handles the low-level IRC protocol: dialing the server,
 // performing the registration handshake, writing rate-limited lines,
 // reading lines in a background goroutine, and parsing RFC 1459 messages
 // with IRCv3 message-tag support.
-package irc
+package main
 
 import (
 	"bufio"
@@ -17,12 +17,10 @@ import (
 	"net"
 	"strings"
 	"time"
-
-	"github.com/cstroie/wirgloo/logger"
 )
 
-// Message is a parsed IRC protocol line.
-type Message struct {
+// ircMessage is a parsed IRC protocol line.
+type ircMessage struct {
 	Tags     map[string]string // IRCv3 message tags, nil if none
 	Prefix   string            // raw prefix, e.g. "nick!user@host" or "server"
 	Nick     string            // nick extracted from Prefix; equals Prefix for server messages
@@ -31,12 +29,12 @@ type Message struct {
 	Trailing string            // text after the " :" separator
 }
 
-// Dial opens a TCP connection to server:port. When useTLS is true the
+// ircDial opens a TCP connection to server:port. When useTLS is true the
 // connection is wrapped in TLS; noVerify disables certificate verification
 // (covers self-signed certs, hostname mismatches, expired certs, etc.).
 // TCP keepalives are enabled on the underlying socket so silent connection
 // drops are detected promptly.
-func Dial(server string, port int, useTLS, noVerify bool) (net.Conn, error) {
+func ircDial(server string, port int, useTLS, noVerify bool) (net.Conn, error) {
 	addr := fmt.Sprintf("[%s]:%d", server, port)
 	if server[0] != '[' && !containsColon(server) {
 		addr = fmt.Sprintf("%s:%d", server, port)
@@ -69,10 +67,10 @@ func setKeepalive(conn net.Conn) {
 	}
 }
 
-// Handshake sends the IRC registration sequence. capReq, if non-empty, is sent
-// as "CAP REQ :<capReq>" before NICK/USER to start capability negotiation.
+// ircHandshake sends the IRC registration sequence. capReq, if non-empty, is
+// sent as "CAP REQ :<capReq>" before NICK/USER to start capability negotiation.
 // pass is sent as a PASS command only when non-empty.
-func Handshake(conn net.Conn, nick, user, realname, pass, capReq string) error {
+func ircHandshake(conn net.Conn, nick, user, realname, pass, capReq string) error {
 	var lines []string
 	if capReq != "" {
 		lines = append(lines, "CAP REQ :"+capReq)
@@ -92,17 +90,16 @@ func Handshake(conn net.Conn, nick, user, realname, pass, capReq string) error {
 	return nil
 }
 
-// WriteLine writes a single IRC line to conn, appending the required CR-LF.
-func WriteLine(conn net.Conn, line string) error {
+// ircWriteLine writes a single IRC line to conn, appending the required CR-LF.
+func ircWriteLine(conn net.Conn, line string) error {
 	_, err := fmt.Fprintf(conn, "%s\r\n", line)
 	return err
 }
 
-// ReadLoop reads lines from conn and sends them on out. It returns when the
-// connection is closed or when done is closed (the latter allows clean
-// shutdown without waiting for the next read). The out channel is closed
-// when ReadLoop returns so range-based consumers exit naturally.
-func ReadLoop(conn net.Conn, out chan<- string, done <-chan struct{}) {
+// ircReadLoop reads lines from conn and sends them on out. It returns when the
+// connection is closed or when done is closed. The out channel is closed when
+// ircReadLoop returns so range-based consumers exit naturally.
+func ircReadLoop(conn net.Conn, out chan<- string, done <-chan struct{}) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -113,16 +110,16 @@ func ReadLoop(conn net.Conn, out chan<- string, done <-chan struct{}) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		logger.L.Warn("irc read error", "err", err)
+		L.Warn("irc read error", "err", err)
 	}
 	close(out)
 }
 
-// ParseLine parses a raw IRC line into a Message following RFC 1459 syntax.
-// The trailing parameter (after " :") is appended to Params so callers can
-// always index Params without special-casing the trailing field.
-func ParseLine(line string) Message {
-	msg := Message{}
+// ircParseLine parses a raw IRC line into an ircMessage following RFC 1459
+// syntax. The trailing parameter (after " :") is appended to Params so callers
+// can always index Params without special-casing the trailing field.
+func ircParseLine(line string) ircMessage {
+	msg := ircMessage{}
 	// IRCv3 message tags: @key=value;key2=value2 ...
 	if strings.HasPrefix(line, "@") {
 		parts := strings.SplitN(line, " ", 2)

@@ -4,11 +4,11 @@
 // Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Package ws implements the WebSocket layer between the browser and the server.
+// handler implements the WebSocket layer between the browser and the server.
 // Each HTTP upgrade becomes a Session; inbound JSON messages from the browser
-// are dispatched to IRC commands via the session package, and all IRC events
-// flow back over the same WebSocket as JSON.
-package ws
+// are dispatched to IRC commands, and all IRC events flow back over the same
+// WebSocket as JSON.
+package main
 
 import (
 	"encoding/json"
@@ -16,8 +16,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cstroie/wirgloo/logger"
-	"github.com/cstroie/wirgloo/session"
 	"github.com/gorilla/websocket"
 )
 
@@ -54,7 +52,7 @@ type inMsg struct {
 	Line       string `json:"line"`
 }
 
-// Handler returns an http.HandlerFunc that upgrades the connection to
+// wsHandler returns an http.HandlerFunc that upgrades the connection to
 // WebSocket and drives the read loop for one browser session.
 //
 // If the request carries a "session" query parameter the handler tries to
@@ -64,23 +62,23 @@ type inMsg struct {
 // "session_expired" so the browser falls back to the connect form.
 //
 // On disconnect the session is detached rather than destroyed: the IRC
-// connection stays alive for up to 60 seconds while the browser reconnects.
-func Handler(reg *session.Registry) http.HandlerFunc {
+// connection stays alive for up to WsReconnectWindow while the browser reconnects.
+func wsHandler(reg *Registry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			logger.L.Warn("websocket upgrade failed", "remote", r.RemoteAddr, "err", err)
+			L.Warn("websocket upgrade failed", "remote", r.RemoteAddr, "err", err)
 			return
 		}
 
-		var s *session.Session
+		var s *Session
 		if id := r.URL.Query().Get("session"); id != "" {
 			s = reg.Resume(id, conn)
 			if s != nil {
-				logger.L.Info("client resumed", "session", s.ID, "remote", r.RemoteAddr)
+				L.Info("client resumed", "session", s.ID, "remote", r.RemoteAddr)
 				s.SendResumed()
 			} else {
-				logger.L.Info("session not found, notifying client", "id", id, "remote", r.RemoteAddr)
+				L.Info("session not found, notifying client", "id", id, "remote", r.RemoteAddr)
 				if data, err := json.Marshal(map[string]any{"type": "session_expired"}); err == nil {
 					conn.WriteMessage(websocket.TextMessage, data)
 				}
@@ -88,13 +86,13 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 		}
 		if s == nil {
 			s = reg.New(conn)
-			logger.L.Info("client connected", "session", s.ID, "remote", r.RemoteAddr)
+			L.Info("client connected", "session", s.ID, "remote", r.RemoteAddr)
 		}
 
 		defer func() {
 			reg.Detach(s)
 			conn.Close()
-			logger.L.Info("client disconnected", "session", s.ID, "nick", s.Nick)
+			L.Info("client disconnected", "session", s.ID, "nick", s.Nick)
 		}()
 
 		for {
@@ -104,12 +102,12 @@ func Handler(reg *session.Registry) http.HandlerFunc {
 			}
 			var msg inMsg
 			if err := json.Unmarshal(raw, &msg); err != nil {
-				logger.L.Warn("invalid message", "session", s.ID, "err", err)
+				L.Warn("invalid message", "session", s.ID, "err", err)
 				continue
 			}
-			logger.L.Debug("ws message", "session", s.ID, "type", msg.Type)
+			L.Debug("ws message", "session", s.ID, "type", msg.Type)
 			if err := dispatch(s, msg); err != nil {
-				logger.L.Error("dispatch error", "session", s.ID, "type", msg.Type, "err", err)
+				L.Error("dispatch error", "session", s.ID, "type", msg.Type, "err", err)
 			}
 		}
 	}
@@ -123,7 +121,7 @@ func sanitize(s string) string {
 // dispatch routes an inbound browser message to the appropriate Session method
 // or raw IRC command. Unknown message types are silently ignored so future
 // client-only messages don't require server changes.
-func dispatch(s *session.Session, msg inMsg) error {
+func dispatch(s *Session, msg inMsg) error {
 	switch msg.Type {
 	case "connect":
 		// Apply IRC default ports when the browser omits them.

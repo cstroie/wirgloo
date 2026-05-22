@@ -4,13 +4,13 @@
 // Copyright (C) 2025 Costin Stroie <costinstroie@eridu.eu.org>
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Package session manages the lifecycle of connected clients. Each browser
-// tab owns one Session that pairs a WebSocket connection with an IRC TCP
-// connection. The Registry tracks all live sessions and supports transparent
-// WebSocket reconnection: when the browser's socket drops the IRC connection
-// stays alive for up to wsReconnectWindow so the client can reattach without
-// losing channel membership or message history.
-package session
+// session manages the lifecycle of connected clients. Each browser tab owns
+// one Session that pairs a WebSocket connection with an IRC TCP connection.
+// The Registry tracks all live sessions and supports transparent WebSocket
+// reconnection: when the browser's socket drops the IRC connection stays alive
+// for up to WsReconnectWindow so the client can reattach without losing
+// channel membership or message history.
+package main
 
 import (
 	"crypto/rand"
@@ -25,8 +25,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cstroie/wirgloo/irc"
-	"github.com/cstroie/wirgloo/logger"
 	"github.com/gorilla/websocket"
 )
 
@@ -46,9 +44,6 @@ const (
 	sendInterval = 333 * time.Millisecond // one new token every ~333 ms (≈ 3 lines/sec)
 )
 
-// Session represents one connected browser client and its associated IRC
-// connection. All fields are protected by mu except ID and done, which are
-// immutable after creation and safe to read without holding the lock.
 // listEntry is one row from an IRC LIST response.
 type listEntry struct {
 	channel string
@@ -56,6 +51,9 @@ type listEntry struct {
 	topic   string
 }
 
+// Session represents one connected browser client and its associated IRC
+// connection. All fields are protected by mu except ID and done, which are
+// immutable after creation and safe to read without holding the lock.
 type Session struct {
 	ID         string          // unique session identifier, hex-encoded random bytes
 	Nick       string          // current IRC nick, updated on NICK events
@@ -63,12 +61,12 @@ type Session struct {
 	ws         *websocket.Conn // current WebSocket; nil while detached
 	buf        [][]byte        // JSON messages buffered while ws is nil
 	conn       net.Conn        // underlying IRC TCP connection
-	done       chan struct{}   // closed once to signal all goroutines to exit
+	done       chan struct{}    // closed once to signal all goroutines to exit
 	server     string          // original dial address, e.g. "irc.libera.chat"
 	authMethod string          // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
 	authPass   string          // password for the chosen auth method
 	lastPong   time.Time       // wall time of the most recent PONG received
-	sendQ      chan string     // rate-limited outbound IRC line queue
+	sendQ      chan string      // rate-limited outbound IRC line queue
 	channels   map[string]bool // channels the client is currently joined to
 	network    string          // NETWORK= value from 005, e.g. "Libera.Chat"
 	servername string          // server hostname from 004 RPL_MYINFO
@@ -130,7 +128,7 @@ func (r *Registry) Resume(id string, ws *websocket.Conn) *Session {
 }
 
 // Detach nulls out the WebSocket and starts a cleanup timer. If the client
-// does not reconnect within wsReconnectWindow the IRC connection is closed
+// does not reconnect within WsReconnectWindow the IRC connection is closed
 // and the session is removed from the registry.
 func (r *Registry) Detach(s *Session) {
 	s.mu.Lock()
@@ -142,7 +140,7 @@ func (r *Registry) Detach(s *Session) {
 		wsGone := s.ws == nil
 		s.mu.Unlock()
 		if wsGone {
-			logger.L.Info("session expired", "session", s.ID)
+			L.Info("session expired", "session", s.ID)
 			s.mu.Lock()
 			s.buf = nil
 			s.mu.Unlock()
@@ -169,10 +167,10 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 	if realname == "" {
 		realname = nick
 	}
-	logger.L.Info("connecting to IRC", "session", s.ID, "server", server, "port", port, "nick", nick, "tls", useTLS, "noverify", noVerify)
-	conn, err := irc.Dial(server, port, useTLS, noVerify)
+	L.Info("connecting to IRC", "session", s.ID, "server", server, "port", port, "nick", nick, "tls", useTLS, "noverify", noVerify)
+	conn, err := ircDial(server, port, useTLS, noVerify)
 	if err != nil {
-		logger.L.Error("IRC dial failed", "session", s.ID, "server", server, "err", err)
+		L.Error("IRC dial failed", "session", s.ID, "server", server, "err", err)
 		s.sendWS(map[string]any{"type": "connect_error", "text": err.Error()})
 		return err
 	}
@@ -194,9 +192,9 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 		capReq = "multi-prefix away-notify server-time userhost-in-names sasl"
 	}
 
-	if err := irc.Handshake(conn, nick, nick, realname, serverPass, capReq); err != nil {
+	if err := ircHandshake(conn, nick, nick, realname, serverPass, capReq); err != nil {
 		conn.Close()
-		logger.L.Error("IRC handshake failed", "session", s.ID, "err", err)
+		L.Error("IRC handshake failed", "session", s.ID, "err", err)
 		s.sendWS(map[string]any{"type": "connect_error", "text": err.Error()})
 		return err
 	}
@@ -206,7 +204,7 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 	s.mu.Unlock()
 
 	lines := make(chan string, 64)
-	go irc.ReadLoop(conn, lines, s.done)
+	go ircReadLoop(conn, lines, s.done)
 	go s.ircLoop(lines)
 	go s.pingLoop()
 	go s.sendLoop(conn)
@@ -225,8 +223,8 @@ func (s *Session) sendLoop(conn net.Conn) {
 
 	flush := func() {
 		for tokens > 0 && len(pending) > 0 {
-			logger.L.Debug("irc send", "session", s.ID, "line", redactIRC(pending[0]))
-			irc.WriteLine(conn, pending[0])
+			L.Debug("irc send", "session", s.ID, "line", redactIRC(pending[0]))
+			ircWriteLine(conn, pending[0])
 			pending = pending[1:]
 			tokens--
 		}
@@ -255,8 +253,8 @@ func (s *Session) writeNow(line string) {
 	conn := s.conn
 	s.mu.Unlock()
 	if conn != nil {
-		logger.L.Debug("irc send", "session", s.ID, "line", redactIRC(line))
-		irc.WriteLine(conn, line)
+		L.Debug("irc send", "session", s.ID, "line", redactIRC(line))
+		ircWriteLine(conn, line)
 	}
 }
 
@@ -283,11 +281,6 @@ func (s *Session) SendResumed() {
 	s.SendIRC("LUSERS")
 }
 
-// ircLoop processes every line received from the IRC server and forwards
-// relevant events to the browser as JSON WebSocket messages. It runs in its
-// own goroutine and exits when the lines channel is closed — either because
-// the TCP connection dropped or because done was closed. After the loop ends
-// it sends a "disconnected" message so the browser can show a reconnect UI.
 // setMeta stores a server metadata key and broadcasts it to the browser.
 func (s *Session) setMeta(key string, value any) {
 	s.mu.Lock()
@@ -306,10 +299,15 @@ func (s *Session) appendMeta(key string, value string) {
 	s.sendWS(map[string]any{"type": "server_meta", "key": key, "value": updated})
 }
 
+// ircLoop processes every line received from the IRC server and forwards
+// relevant events to the browser as JSON WebSocket messages. It runs in its
+// own goroutine and exits when the lines channel is closed — either because
+// the TCP connection dropped or because done was closed. After the loop ends
+// it sends a "disconnected" message so the browser can show a reconnect UI.
 func (s *Session) ircLoop(lines <-chan string) {
 	for line := range lines {
-		logger.L.Debug("irc recv", "session", s.ID, "line", line)
-		msg := irc.ParseLine(line)
+		L.Debug("irc recv", "session", s.ID, "line", line)
+		msg := ircParseLine(line)
 		switch msg.Command {
 		case "CAP":
 			sub := ""
@@ -363,7 +361,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			}
 
 		case "001": // welcome — IRC registration complete
-			logger.L.Info("IRC connected", "session", s.ID, "nick", s.Nick)
+			L.Info("IRC connected", "session", s.ID, "nick", s.Nick)
 			s.mu.Lock()
 			am := s.authMethod
 			ap := s.authPass
@@ -458,7 +456,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 				// Unrecognised CTCP request — ignore rather than forward to the UI.
 				continue
 			}
-			logger.L.Debug("PRIVMSG", "session", s.ID, "from", msg.Nick, "target", target)
+			L.Debug("PRIVMSG", "session", s.ID, "from", msg.Nick, "target", target)
 			s.sendWS(map[string]any{
 				"type": "message", "from": msg.Nick,
 				"target": target, "text": text,
@@ -470,7 +468,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if channel == "" && len(msg.Params) > 0 {
 				channel = msg.Params[0]
 			}
-			logger.L.Info("JOIN", "session", s.ID, "nick", msg.Nick, "channel", channel)
+			L.Info("JOIN", "session", s.ID, "nick", msg.Nick, "channel", channel)
 			if msg.Nick == s.Nick {
 				s.mu.Lock()
 				s.channels[channel] = true
@@ -483,7 +481,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if len(msg.Params) > 0 {
 				channel = msg.Params[0]
 			}
-			logger.L.Info("PART", "session", s.ID, "nick", msg.Nick, "channel", channel)
+			L.Info("PART", "session", s.ID, "nick", msg.Nick, "channel", channel)
 			if msg.Nick == s.Nick {
 				s.mu.Lock()
 				delete(s.channels, channel)
@@ -507,7 +505,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 				s.Nick = newNick
 				s.mu.Unlock()
 			}
-			logger.L.Info("NICK", "session", s.ID, "old", msg.Nick, "new", newNick)
+			L.Info("NICK", "session", s.ID, "old", msg.Nick, "new", newNick)
 			s.sendWS(map[string]any{"type": "nick", "old": msg.Nick, "new": newNick, "ts": msgTime(msg)})
 
 		case "AWAY": // away-notify CAP: nick set or cleared away status
@@ -602,7 +600,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 				continue
 			}
 			channel := msg.Params[1]
-			logger.L.Debug("TOPIC", "session", s.ID, "channel", channel)
+			L.Debug("TOPIC", "session", s.ID, "channel", channel)
 			s.sendWS(map[string]any{"type": "topic", "channel": channel, "text": msg.Trailing, "nick": ""})
 
 		case "333": // RPL_TOPICWHOTIME
@@ -626,7 +624,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			}
 			channel := msg.Params[len(msg.Params)-2]
 			nicks := strings.Fields(msg.Trailing)
-			logger.L.Debug("NAMES chunk", "session", s.ID, "channel", channel, "count", len(nicks))
+			L.Debug("NAMES chunk", "session", s.ID, "channel", channel, "count", len(nicks))
 			s.sendWS(map[string]any{"type": "names_chunk", "channel": channel, "nicks": nicks})
 
 		case "366": // RPL_ENDOFNAMES
@@ -636,11 +634,11 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.sendWS(map[string]any{"type": "names_end", "channel": msg.Params[1]})
 
 		case "433": // ERR_NICKNAMEINUSE
-			logger.L.Warn("nick in use", "session", s.ID, "nick", s.Nick)
+			L.Warn("nick in use", "session", s.ID, "nick", s.Nick)
 			s.sendWS(map[string]any{"type": "error", "text": "Nickname already in use"})
 
 		case "ERROR":
-			logger.L.Error("IRC ERROR", "session", s.ID, "text", msg.Trailing)
+			L.Error("IRC ERROR", "session", s.ID, "text", msg.Trailing)
 			s.sendWS(map[string]any{"type": "error", "text": msg.Trailing})
 
 		case "MODE":
@@ -654,21 +652,21 @@ func (s *Session) ircLoop(lines <-chan string) {
 				params = []string{}
 			}
 			modeStr := strings.Join(msg.Params[1:], " ")
-			logger.L.Debug("MODE", "session", s.ID, "target", target, "mode", modeStr)
+			L.Debug("MODE", "session", s.ID, "target", target, "mode", modeStr)
 			s.sendWS(map[string]any{"type": "mode", "target": target, "mode": modeStr, "flags": flags, "params": params, "nick": msg.Nick, "ts": msgTime(msg)})
 
 		case "INVITE":
 			if len(msg.Params) < 2 {
 				continue
 			}
-			logger.L.Info("INVITE", "session", s.ID, "nick", msg.Nick, "channel", msg.Params[1])
+			L.Info("INVITE", "session", s.ID, "nick", msg.Nick, "channel", msg.Params[1])
 			s.sendWS(map[string]any{"type": "invite", "nick": msg.Nick, "channel": msg.Params[1], "ts": msgTime(msg)})
 
 		case "KICK":
 			if len(msg.Params) < 2 {
 				continue
 			}
-			logger.L.Info("KICK", "session", s.ID, "channel", msg.Params[0], "target", msg.Params[1], "by", msg.Nick)
+			L.Info("KICK", "session", s.ID, "channel", msg.Params[0], "target", msg.Params[1], "by", msg.Nick)
 			if msg.Params[1] == s.Nick {
 				s.mu.Lock()
 				delete(s.channels, msg.Params[0])
@@ -681,7 +679,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			})
 
 		case "QUIT":
-			logger.L.Debug("QUIT", "session", s.ID, "nick", msg.Nick)
+			L.Debug("QUIT", "session", s.ID, "nick", msg.Nick)
 			s.sendWS(map[string]any{"type": "quit", "nick": msg.Nick, "text": msg.Trailing, "ts": msgTime(msg)})
 
 		case "NOTICE":
@@ -689,7 +687,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 				continue
 			}
 			text := msg.Params[1]
-			logger.L.Debug("NOTICE", "session", s.ID, "from", msg.Nick, "target", msg.Params[0])
+			L.Debug("NOTICE", "session", s.ID, "from", msg.Nick, "target", msg.Params[0])
 			// CTCP VERSION reply: \x01VERSION <string>\x01
 			if strings.HasPrefix(text, "\x01VERSION ") && strings.HasSuffix(text, "\x01") {
 				version := strings.TrimSuffix(strings.TrimPrefix(text, "\x01VERSION "), "\x01")
@@ -713,7 +711,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			})
 		}
 	}
-	logger.L.Info("IRC read loop ended", "session", s.ID)
+	L.Info("IRC read loop ended", "session", s.ID)
 	s.sendWS(map[string]any{"type": "disconnected", "text": "IRC connection closed"})
 }
 
@@ -729,13 +727,13 @@ func (s *Session) SendIRC(line string) error {
 	select {
 	case q <- line:
 	default:
-		logger.L.Warn("send queue full, dropping line", "session", s.ID, "line", line)
+		L.Warn("send queue full, dropping line", "session", s.ID, "line", line)
 	}
 	return nil
 }
 
 // sendListResults filters and sorts listBuf then sends the results to the
-// browser. An empty query sends the top listPreviewSize channels by user count.
+// browser. An empty query sends the top ListPreviewSize channels by user count.
 func (s *Session) sendListResults(query string) {
 	s.mu.Lock()
 	all := make([]listEntry, len(s.listBuf))
@@ -780,7 +778,7 @@ func (s *Session) Quit(reason string) {
 
 // sendWS serialises v as JSON and writes it to the WebSocket. If the
 // WebSocket is currently detached the message is appended to the session
-// buffer (up to bufferMax entries) so it can be flushed on reconnect.
+// buffer (up to BufferMax entries) so it can be flushed on reconnect.
 func (s *Session) sendWS(v any) {
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -799,8 +797,7 @@ func (s *Session) sendWS(v any) {
 
 // pingLoop sends a PING to the server every pingInterval. If a PONG has not
 // been received within pingTimeout of the most recent PING the connection is
-// considered dead and Close is called. This catches silent TCP drops that OS
-// keepalives do not detect quickly enough.
+// considered dead and Close is called.
 func (s *Session) pingLoop() {
 	ticker := time.NewTicker(pingInterval)
 	defer ticker.Stop()
@@ -814,7 +811,7 @@ func (s *Session) pingLoop() {
 			lp := s.lastPong
 			s.mu.Unlock()
 			if !pingSent.IsZero() && lp.Before(pingSent) && time.Since(pingSent) > pingTimeout {
-				logger.L.Warn("ping timeout", "session", s.ID)
+				L.Warn("ping timeout", "session", s.ID)
 				s.Close()
 				return
 			}
@@ -826,7 +823,7 @@ func (s *Session) pingLoop() {
 
 // msgTime returns the Unix timestamp from the server-time tag if present,
 // falling back to the current time.
-func msgTime(msg irc.Message) int64 {
+func msgTime(msg ircMessage) int64 {
 	if t, ok := msg.Tags["time"]; ok {
 		if parsed, err := time.Parse(time.RFC3339Nano, t); err == nil {
 			return parsed.Unix()
@@ -836,8 +833,7 @@ func msgTime(msg irc.Message) int64 {
 }
 
 // Close shuts down the IRC connection and signals all goroutines (ircLoop,
-// pingLoop, ReadLoop) to exit via the done channel. Safe to call more than
-// once.
+// pingLoop, ircReadLoop) to exit via the done channel. Safe to call more than once.
 func (s *Session) Close() {
 	select {
 	case <-s.done:

@@ -10,7 +10,6 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -18,13 +17,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cstroie/wirgloo/logger"
-	"github.com/cstroie/wirgloo/session"
-	"github.com/cstroie/wirgloo/ws"
+	wirgloo "github.com/cstroie/wirgloo"
 )
-
-//go:embed static/*
-var staticFiles embed.FS // embedded copy of the static/ directory, baked in at build time
 
 // version is injected at build time via -ldflags "-X main.version=YYMMDD".
 // Falls back to "dev" when built without the Makefile.
@@ -32,51 +26,53 @@ var version = "dev"
 
 func main() {
 	addr := flag.String("addr", "0.0.0.0:6677", "listen address")
+	base := flag.String("base", "", "base path prefix for all routes, e.g. /wirgloo")
 	dev := flag.Bool("dev", false, "serve static files from disk (dev mode)")
 	logJSON := flag.Bool("log-json", false, "emit logs as JSON")
 	logLevel := flag.String("log-level", "info", "log level: debug, info, warn, error")
-	sessionTimeout := flag.Duration("session-timeout", session.WsReconnectWindow, "how long an IRC session survives a browser disconnect")
-	bufferMax := flag.Int("buffer-max", session.BufferMax, "max messages buffered per session while browser is disconnected")
-	listPreview := flag.Int("list-preview", session.ListPreviewSize, "max channels shown in /list before filtering")
+	sessionTimeout := flag.Duration("session-timeout", WsReconnectWindow, "how long an IRC session survives a browser disconnect")
+	bufferMax := flag.Int("buffer-max", BufferMax, "max messages buffered per session while browser is disconnected")
+	listPreview := flag.Int("list-preview", ListPreviewSize, "max channels shown in /list before filtering")
 	flag.Parse()
 
-	session.WsReconnectWindow = *sessionTimeout
-	session.BufferMax = *bufferMax
-	session.ListPreviewSize = *listPreview
+	WsReconnectWindow = *sessionTimeout
+	BufferMax = *bufferMax
+	ListPreviewSize = *listPreview
 
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(*logLevel)); err != nil {
 		slog.Error("invalid log level", "value", *logLevel)
 		os.Exit(1)
 	}
-	logger.Init(level, *logJSON)
+	initLogger(level, *logJSON)
 
-	session.AppVersion = version
+	AppVersion = version
 
-	reg := session.NewRegistry()
+	reg := NewRegistry()
 
-	http.HandleFunc("/ws", ws.Handler(reg))
-	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(*base+"/ws", wsHandler(reg))
+	http.HandleFunc(*base+"/version", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"name":"wirgloo","version":%q}`, version)
 	})
 
+	staticPrefix := *base + "/"
 	if *dev {
 		// Serve directly from disk so edits are visible without restarting.
-		logger.L.Info("serving static files from disk")
-		http.Handle("/", http.FileServer(http.Dir("static")))
+		L.Info("serving static files from disk")
+		http.Handle(staticPrefix, http.StripPrefix(*base, http.FileServer(http.Dir("static"))))
 	} else {
-		sub, err := fs.Sub(staticFiles, "static")
+		sub, err := fs.Sub(wirgloo.StaticFiles, "static")
 		if err != nil {
-			logger.L.Error("embed fs error", "err", err)
+			L.Error("embed fs error", "err", err)
 			os.Exit(1)
 		}
-		http.Handle("/", http.FileServer(http.FS(sub)))
+		http.Handle(staticPrefix, http.StripPrefix(*base, http.FileServer(http.FS(sub))))
 	}
 
-	logger.L.Info("wirgloo starting", "version", version, "addr", *addr)
+	L.Info("wirgloo starting", "version", version, "addr", *addr)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
-		logger.L.Error("server error", "err", err)
+		L.Error("server error", "err", err)
 		os.Exit(1)
 	}
 }
