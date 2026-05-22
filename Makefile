@@ -12,6 +12,7 @@ build:
 
 install: build
 	install -Dm755 $(BINARY) $(PREFIX)/bin/$(BINARY)
+	install -Dm644 $(BINARY).1 $(PREFIX)/share/man/man1/$(BINARY).1
 
 install-service: install
 	sed 's|/usr/local/bin/igloo|$(PREFIX)/bin/$(BINARY)|' $(BINARY).service \
@@ -26,6 +27,7 @@ uninstall-service:
 
 uninstall: uninstall-service
 	rm -f $(PREFIX)/bin/$(BINARY)
+	rm -f $(PREFIX)/share/man/man1/$(BINARY).1
 
 clean:
 	rm -f $(BINARY)

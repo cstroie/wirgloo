@@ -1,0 +1,83 @@
+.TH WIRGLOO 1 "2026-05-22" "wirgloo" "User Commands"
+.SH NAME
+wirgloo \- self-hosted web IRC client
+.SH SYNOPSIS
+.B wirgloo
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B wirgloo
+is a single-binary web IRC client. It serves a browser-based IRC interface
+and proxies IRC connections over WebSocket, so users can connect to any IRC
+network from a plain browser without installing anything.
+.SH OPTIONS
+.SS HTTP server
+.TP
+.BI \-addr " address"
+TCP address to listen on.
+Default: \fB0.0.0.0:6677\fR.
+.TP
+.BI \-base " path"
+Base path prefix for all routes when running behind a reverse proxy,
+e.g. \fB/wirgloo\fR. Leading slash and trailing slash are normalised
+automatically. Default: empty (serve from \fB/\fR).
+.TP
+.B \-dev
+Serve static files from disk instead of the embedded copy. Useful during
+development: HTML, CSS and JS changes are visible without rebuilding the
+binary.
+.SS Session
+.TP
+.BI \-session-timeout " duration"
+How long an IRC session survives a browser disconnect before the underlying
+IRC connection is torn down. Accepts Go duration syntax, e.g. \fB30m\fR,
+\fB2h\fR.
+Default: \fB60m\fR.
+.TP
+.BI \-buffer-max " n"
+Maximum number of IRC messages buffered per session while the browser is
+disconnected. Buffered messages are flushed to the browser on reconnect.
+Default: \fB500\fR.
+.TP
+.BI \-list-preview " n"
+Maximum number of channels returned by \fB/list\fR before a filter is
+applied, sorted by user count.
+Default: \fB50\fR.
+.SS Logging
+.TP
+.BI \-log-level " level"
+Minimum log level. One of \fBdebug\fR, \fBinfo\fR, \fBwarn\fR, \fBerror\fR.
+Default: \fBinfo\fR.
+.TP
+.B \-log-json
+Emit logs as JSON instead of human-readable text. Useful for log aggregation
+pipelines.
+.SH EXAMPLES
+Start with default settings:
+.RS
+.EX
+wirgloo
+.EE
+.RE
+Listen on a specific address, behind a reverse proxy at \fB/chat\fR:
+.RS
+.EX
+wirgloo \-addr 127.0.0.1:6677 \-base /chat
+.EE
+.RE
+Development mode with debug logging:
+.RS
+.EX
+wirgloo \-dev \-log-level debug
+.EE
+.RE
+.SH FILES
+.TP
+.I /etc/systemd/system/wirgloo.service
+Example systemd unit file, installed by \fBmake install-service\fR.
+.SH AUTHORS
+Costin Stroie <costinstroie@eridu.eu.org>
+.SH LICENSE
+GNU General Public License v3.0 or later.
+.SH SEE ALSO
+.BR nginx (8),
+.BR systemctl (1)
