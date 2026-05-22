@@ -626,24 +626,25 @@ function handle(msg) {
       if (msg.welcome) appendMsg('*server*', { type: 'motd', nick: '-', text: msg.welcome });
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected to ${state.server} as ${msg.nick}` });
       requestNotifyPermission();
-      restoreSavedChannels(state.server);
-      // Ensure *list* channel exists but is hidden by default
-      if (!state.channels.has('*list*')) {
-        state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
-      }
-      if (state.pendingChannel) {
-        send({ type: 'join', channel: state.pendingChannel });
-        state.pendingChannel = null;
-      }
-      // re-join channels that were active before a session_expired reconnect
-      if (wasReconnect) {
-        state.channels.forEach((ch, target) => {
-          if (target.startsWith('#') && !ch.offline) {
-            ch.nicks = new Map(); // clear stale nick list
-            send({ type: 'join', channel: target, ...(ch.key ? { key: ch.key } : {}) });
-          }
-        });
-      }
+      preloadLogs(state.server).then(() => {
+        restoreSavedChannels(state.server);
+        if (!state.channels.has('*list*')) {
+          state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
+        }
+        if (state.pendingChannel) {
+          send({ type: 'join', channel: state.pendingChannel });
+          state.pendingChannel = null;
+        }
+        // re-join channels that were active before a session_expired reconnect
+        if (wasReconnect) {
+          state.channels.forEach((ch, target) => {
+            if (target.startsWith('#') && !ch.offline) {
+              ch.nicks = new Map();
+              send({ type: 'join', channel: target, ...(ch.key ? { key: ch.key } : {}) });
+            }
+          });
+        }
+      });
       break;
     }
 
