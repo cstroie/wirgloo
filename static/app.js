@@ -55,11 +55,11 @@ function rotateSuggestion() {
   $('nick').value = nick;
   $('realname').value = real;
   $('realname').dataset.suggested = '1';
-  try { localStorage.setItem('wirgloo_default_nick', JSON.stringify({ nick, realname: real, offset: _nickOffset })); } catch {}
+  try { localStorage.setItem('wirgloo:nick', JSON.stringify({ nick, realname: real, offset: _nickOffset })); } catch {}
 }
 
 function loadDefaultNick() {
-  try { return JSON.parse(localStorage.getItem('wirgloo_default_nick') || 'null'); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem('wirgloo:nick') || 'null'); } catch { return null; }
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -183,14 +183,14 @@ const NETWORKS = {
 
 // ── Saved profiles ────────────────────────────────────────────────────────────
 function loadProfiles() {
-  try { return JSON.parse(localStorage.getItem('wirgloo_profiles') || '[]'); }
+  try { return JSON.parse(localStorage.getItem('wirgloo:profiles') || '[]'); }
   catch { return []; }
 }
 
 function saveProfile(profile) {
   const profiles = loadProfiles().filter(p => p.server !== profile.server || p.port !== profile.port);
   profiles.unshift(profile);
-  localStorage.setItem('wirgloo_profiles', JSON.stringify(profiles));
+  localStorage.setItem('wirgloo:profiles', JSON.stringify(profiles));
 }
 
 function profileKey(p) { return `saved:${p.server}:${p.port}`; }
@@ -240,18 +240,18 @@ $('delete-profile-btn').addEventListener('click', () => {
   const profiles = loadProfiles();
   const idx = profiles.findIndex(p => profileKey(p) === val);
   if (idx !== -1) profiles.splice(idx, 1);
-  localStorage.setItem('wirgloo_profiles', JSON.stringify(profiles));
+  localStorage.setItem('wirgloo:profiles', JSON.stringify(profiles));
   renderSavedProfiles();
   $('network').value = 'libera';
   applyNetworkSelection('libera');
 });
 
 // ── Per-server settings ───────────────────────────────────────────────────────
-// Each server's settings are stored in one key: wirgloo_srv:<server>
-// Global keys: wirgloo_profiles, wirgloo_ignored
-// Per-tab keys (sessionStorage): wirgloo_session → {server, network}
+// Each server's settings are stored in one key: wirgloo:srv:<server>
+// Global keys: wirgloo:profiles, wirgloo:ignored
+// Per-tab keys (sessionStorage): wirgloo:session → {server, network}
 
-function srvKey(server) { return `wirgloo_srv:${server}`; }
+function srvKey(server) { return `wirgloo:srv:${server}`; }
 
 function loadSrv(server) {
   try { return JSON.parse(localStorage.getItem(srvKey(server)) || '{}'); }
@@ -265,7 +265,7 @@ function saveSrv(server, patch) {
 }
 
 function saveIgnored() {
-  localStorage.setItem('wirgloo_ignored', JSON.stringify([...state.ignored]));
+  localStorage.setItem('wirgloo:ignored', JSON.stringify([...state.ignored]));
 }
 
 function saveChannels(server) {
@@ -293,12 +293,12 @@ function restoreSavedChannels(server) {
 (function init() {
   renderSavedProfiles();
   try {
-    const ig = JSON.parse(localStorage.getItem('wirgloo_ignored') || '[]');
+    const ig = JSON.parse(localStorage.getItem('wirgloo:ignored') || '[]');
     ig.forEach(n => state.ignored.add(n.toLowerCase()));
   } catch {}
   // pre-fill form from this tab's last session (sessionStorage is per-tab)
   let tabSession = null;
-  try { tabSession = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null'); } catch {}
+  try { tabSession = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null'); } catch {}
   const lastServer = tabSession?.server || null;
   const lastNet    = tabSession?.network || null;
   if (lastServer) {
@@ -379,7 +379,7 @@ connectForm.addEventListener('submit', e => {
     renderSavedProfiles();
   }
   state.server = server;
-  try { sessionStorage.setItem('wirgloo_session', JSON.stringify({ server, network: netVal, tls })); } catch {}
+  try { sessionStorage.setItem('wirgloo:session', JSON.stringify({ server, network: netVal, tls })); } catch {}
   state.connectParams = { server, port, nick, realname, tls, noverify, authMethod, pass };
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
@@ -536,8 +536,8 @@ function handle(msg) {
       state.nick = msg.nick;
       state.server = msg.server || '';
       if (state.server) try {
-        const prev = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null') || {};
-        sessionStorage.setItem('wirgloo_session', JSON.stringify({ ...prev, server: state.server }));
+        const prev = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null') || {};
+        sessionStorage.setItem('wirgloo:session', JSON.stringify({ ...prev, server: state.server }));
       } catch {}
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
@@ -869,7 +869,7 @@ const LOG_MAX   = 200;
 const LOG_TYPES = new Set(['msg', 'me', 'notice', 'join', 'part', 'quit', 'system']);
 
 function logKey(server, target) {
-  return `wirgloo_log:${server}:${target}`;
+  return `wirgloo:log:${server}:${target}`;
 }
 
 function persistMsg(target, m) {
@@ -920,7 +920,7 @@ function updateTargetName(target) {
               : target === '*list*'   ? `Channels${state.listTotal ? ' (' + state.listTotal + ')' : ''}`
               : target;
   let tls = state.connectParams?.tls;
-  if (tls === undefined) { try { tls = JSON.parse(sessionStorage.getItem('wirgloo_session') || 'null')?.tls; } catch {} }
+  if (tls === undefined) { try { tls = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null')?.tls; } catch {} }
   const lock = target === '*server*' ? (tls ? '🔒 ' : '🔓 ') : '';
   targetName.textContent = lock + label;
 }
