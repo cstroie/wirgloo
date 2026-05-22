@@ -209,6 +209,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 .chan-item.unread { color: var(--text); font-weight: bold; }
 .chan-item.mention { color: var(--mention); font-weight: bold; }
 .chan-item.offline { color: var(--text-dim); font-style: italic; opacity: 0.6; }
+.chan-item.hidden { display: none; }
 .chan-item .unread-badge {
   background: var(--accent); color: #fff; font-size: 0.62rem;
   padding: 1px 5px; border-radius: 10px; min-width: 18px; text-align: center;

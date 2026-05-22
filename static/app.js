@@ -150,6 +150,14 @@ fetch('/version').then(r => r.json()).then(v => {
     state.sessionId = urlSession;
     connectScreen.classList.add('hidden');
     restoreScreen.classList.remove('hidden');
+    // Get the server from sessionStorage (set during the original connection)
+    let tabSession = null;
+    try { tabSession = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null'); } catch {}
+    const server = tabSession?.server;
+    // Load channels with their message history immediately
+    if (server) {
+      restoreChannelsWithHistory(server);
+    }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
     state.ws = ws;
@@ -289,6 +297,40 @@ function restoreSavedChannels(server) {
   renderChannelList();
 }
 
+// Restore channels with full message history from localStorage (on browser reload/resume)
+function restoreChannelsWithHistory(server) {
+  state.server = server;
+  const srv = loadSrv(server);
+  // Restore channels with their saved message history
+  (srv.channels || []).forEach(ch => {
+    const k = chanKey(ch);
+    if (!state.channels.has(k)) {
+      const history = loadLog(server, k);
+      const messages = history.length
+        ? [...history, { type: 'session-break', nick: '', text: '', ts: null }]
+        : [];
+      state.channels.set(k, { messages, nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: true });
+    }
+  });
+  // Restore DMs
+  (srv.dms || []).forEach(nick => {
+    if (!state.channels.has(nick)) {
+      const history = loadLog(server, nick);
+      const messages = history.length
+        ? [...history, { type: 'session-break', nick: '', text: '', ts: null }]
+        : [];
+      state.channels.set(nick, { messages, nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: true });
+    }
+  });
+  // Create server tab
+  ensureChannel('*server*');
+  // Ensure *list* channel exists but is hidden by default
+  if (!state.channels.has('*list*')) {
+    state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
+  }
+  renderChannelList();
+}
+
 // Populate connect form from per-server settings (or fallback to last-used server).
 (function init() {
   renderSavedProfiles();
@@ -385,6 +427,11 @@ connectForm.addEventListener('submit', e => {
   connectScreen.classList.add('hidden');
   chatScreen.classList.remove('hidden');
   ensureChannel('*server*');
+  // Ensure *list* channel exists but is hidden by default
+  if (!state.channels.has('*list*')) {
+    state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
+    renderChannelList();
+  }
   setActive('*server*');
   myNick.textContent = nick;
   appendMsg('*server*', { type: 'connecting', nick: '--', text: `Connecting to ${server}:${port}…` });
@@ -513,6 +560,10 @@ function handle(msg) {
       appendMsg('*server*', { type: 'system', nick: '--', text: `Connected to ${state.server} as ${msg.nick}` });
       requestNotifyPermission();
       restoreSavedChannels(state.server);
+      // Ensure *list* channel exists but is hidden by default
+      if (!state.channels.has('*list*')) {
+        state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
+      }
       if (state.pendingChannel) {
         send({ type: 'join', channel: state.pendingChannel });
         state.pendingChannel = null;
@@ -545,7 +596,7 @@ function handle(msg) {
       scheduleLagPing(3000);
       if (msg.meta) state.serverMeta = msg.meta;
       applyServerMeta(msg.network, msg.servername, msg.welcome);
-      restoreSavedChannels(state.server);
+      restoreChannelsWithHistory(state.server);
       // ensure any channels the server knows about are present and marked live
       (msg.channels || []).forEach(ch => {
         const k = chanKey(ch);
@@ -779,7 +830,9 @@ function handle(msg) {
       }
       ensureChannel('*list*');
       state.channels.get('*list*').messages = [];
+      state.channels.get('*list*').hidden = false; // Unhide list when user requests it
       if (state.active !== '*list*') setActive('*list*');
+      renderChannelList();
       renderListBar();
       break;
 
@@ -865,7 +918,7 @@ function handle(msg) {
 }
 
 // ── Chat log persistence ──────────────────────────────────────────────────────
-const LOG_MAX   = 200;
+const LOG_MAX   = 100;
 const LOG_TYPES = new Set(['msg', 'me', 'notice', 'join', 'part', 'quit', 'system']);
 
 function logKey(server, target) {
@@ -1061,10 +1114,20 @@ function applyServerMeta(network, servername, welcome) {
 
 function renderChannelList() {
   channelList.innerHTML = '';
+  // Render in fixed order: *server*, *list*, then other channels
+  const order = ['*server*', '*list*'];
+  const other = [];
   state.channels.forEach((ch, target) => {
+    if (!order.includes(target)) other.push(target);
+  });
+  const allTargets = [...order.filter(t => state.channels.has(t)), ...other];
+  
+  allTargets.forEach(target => {
+    const ch = state.channels.get(target);
     const el = document.createElement('div');
     el.className = 'chan-item' +
       (target === state.active ? ' active' : '') +
+      (ch.hidden ? ' hidden' : '') +
       (ch.offline ? ' offline' : '') +
       (ch.mention ? ' mention' : ch.unread > 0 ? ' unread' : '');
     let icon, label;
@@ -1075,7 +1138,7 @@ function renderChannelList() {
     el.innerHTML = `<span class="chan-icon">${icon}</span><span class="chan-label">${escHtml(label)}</span>`;
     if (!ch.offline && ch.unread > 0) {
       el.innerHTML += `<span class="unread-badge">${ch.unread}</span>`;
-    } else if (!ch.offline && target !== '*server*') {
+    } else if (!ch.offline && target !== '*server*' && target !== '*list*') {
       el.innerHTML += `<button class="close-btn" data-target="${escHtml(target)}">×</button>`;
     } else if (ch.offline) {
       el.innerHTML += `<button class="close-btn" data-target="${escHtml(target)}">×</button>`;
@@ -1097,7 +1160,10 @@ function renderChannelList() {
         openPanel(null);
         send({ type: 'join', channel: target });
       } else {
+        // Unhide *list* when it's clicked
+        if (target === '*list*') ch.hidden = false;
         setActive(target);
+        renderChannelList();
       }
     });
     channelList.appendChild(el);
