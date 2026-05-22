@@ -268,7 +268,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 
 /* ── Messages — classic IRC layout (desktop) ─────── */
 .msg {
-  display: grid; grid-template-columns: 52px 1fr; gap: 0 12px;
+  display: grid; grid-template-columns: 38px 1fr; gap: 0 12px;
   line-height: 1.55; padding: 2px 6px; border-radius: 6px;
   transition: background 0.1s;
 }

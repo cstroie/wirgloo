@@ -1978,7 +1978,7 @@ function nickColor(nick) {
 
 function fmtTime(unix) {
   const d = new Date(unix * 1000);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function escHtml(s) {
