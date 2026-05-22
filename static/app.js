@@ -150,9 +150,9 @@ fetch('/version').then(r => r.json()).then(v => {
     state.sessionId = urlSession;
     connectScreen.classList.add('hidden');
     restoreScreen.classList.remove('hidden');
-    // Get the server from sessionStorage (set during the original connection)
+    // Get the server from the last-connection record
     let tabSession = null;
-    try { tabSession = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null'); } catch {}
+    try { tabSession = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null'); } catch {}
     const server = tabSession?.server;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     function openRestoredWS() {
@@ -261,7 +261,7 @@ $('delete-profile-btn').addEventListener('click', () => {
 // ── Per-server settings ───────────────────────────────────────────────────────
 // Each server's settings are stored in one key: wirgloo:srv:<server>
 // Global keys: wirgloo:profiles, wirgloo:ignored
-// Per-tab keys (sessionStorage): wirgloo:session → {server, network}
+// Last connection: wirgloo:srv:last → {server, network, tls}
 
 function srvKey(server) { return `wirgloo:srv:${server}`; }
 
@@ -343,9 +343,9 @@ async function restoreChannelsWithHistory(server) {
     const ig = JSON.parse(localStorage.getItem('wirgloo:ignored') || '[]');
     ig.forEach(n => state.ignored.add(n.toLowerCase()));
   } catch {}
-  // pre-fill form from this tab's last session (sessionStorage is per-tab)
+  // pre-fill form from the last connection
   let tabSession = null;
-  try { tabSession = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null'); } catch {}
+  try { tabSession = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null'); } catch {}
   const lastServer = tabSession?.server || null;
   const lastNet    = tabSession?.network || null;
   if (lastServer) {
@@ -426,7 +426,7 @@ connectForm.addEventListener('submit', e => {
     renderSavedProfiles();
   }
   state.server = server;
-  try { sessionStorage.setItem('wirgloo:session', JSON.stringify({ server, network: netVal, tls })); } catch {}
+  try { localStorage.setItem('wirgloo:srv:last', JSON.stringify({ server, network: netVal, tls })); } catch {}
   state.connectParams = { server, port, nick, realname, tls, noverify, authMethod, pass };
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
@@ -592,8 +592,8 @@ function handle(msg) {
       state.nick = msg.nick;
       state.server = msg.server || '';
       if (state.server) try {
-        const prev = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null') || {};
-        sessionStorage.setItem('wirgloo:session', JSON.stringify({ ...prev, server: state.server }));
+        const prev = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null') || {};
+        localStorage.setItem('wirgloo:srv:last', JSON.stringify({ ...prev, server: state.server }));
       } catch {}
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
@@ -1019,7 +1019,7 @@ function updateTargetName(target) {
               : target === '*list*'   ? `Channels${state.listTotal ? ' (' + state.listTotal + ')' : ''}`
               : target;
   let tls = state.connectParams?.tls;
-  if (tls === undefined) { try { tls = JSON.parse(sessionStorage.getItem('wirgloo:session') || 'null')?.tls; } catch {} }
+  if (tls === undefined) { try { tls = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null')?.tls; } catch {} }
   const lock = target === '*server*' ? (tls ? '🔒 ' : '🔓 ') : '';
   targetName.textContent = lock + label;
 }
