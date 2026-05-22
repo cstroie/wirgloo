@@ -212,10 +212,7 @@ function loadLog(server, target) {
     state.sessionId = urlSession;
     connectScreen.classList.add('hidden');
     restoreScreen.classList.remove('hidden');
-    // Get the server from the last-connection record
-    let tabSession = null;
-    try { tabSession = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null'); } catch {}
-    const server = tabSession?.server;
+    const server = localStorage.getItem(`wirgloo:sid:${urlSession}`) || null;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     function openRestoredWS() {
       const ws = new WebSocket(`${proto}://${location.host}/ws?session=${urlSession}`);
@@ -323,7 +320,8 @@ $('delete-profile-btn').addEventListener('click', () => {
 // ── Per-server settings ───────────────────────────────────────────────────────
 // Each server's settings are stored in one key: wirgloo:srv:<server>
 // Global keys: wirgloo:profiles, wirgloo:ignored
-// Last connection: wirgloo:srv:last → {server, network, tls}
+// Last connection (form pre-fill only): wirgloo:srv:last → {server, network, tls}
+// Per-session server lookup: wirgloo:sid:<sessionId> → server
 
 function srvKey(server) { return `wirgloo:srv:${server}`; }
 
@@ -609,6 +607,7 @@ function handle(msg) {
       resetAutoAway();
       state.sessionId = msg.session;
       state.nick = msg.nick;
+      try { localStorage.setItem(`wirgloo:sid:${msg.session}`, state.server); } catch {}
       restoreScreen.classList.add('hidden');
       history.replaceState(null, '', '?s=' + msg.session);
       reconnectDelay = 1000;
@@ -654,10 +653,8 @@ function handle(msg) {
       reconnectDelay = 1000;
       state.nick = msg.nick;
       state.server = msg.server || '';
-      if (state.server) try {
-        const prev = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null') || {};
-        localStorage.setItem('wirgloo:srv:last', JSON.stringify({ ...prev, server: state.server }));
-      } catch {}
+      if (state.server && state.sessionId)
+        try { localStorage.setItem(`wirgloo:sid:${state.sessionId}`, state.server); } catch {}
       myNick.textContent = msg.nick;
       ensureChannel('*server*');
       updateLagDisplay(null);
