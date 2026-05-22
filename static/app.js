@@ -143,6 +143,68 @@ fetch('/version').then(r => r.json()).then(v => {
   $('sidebar-version').textContent  = label;
 }).catch(() => {});
 
+// ── Chat log persistence (IndexedDB) ─────────────────────────────────────────
+const LOG_MAX   = 500;
+const LOG_TYPES = new Set(['msg', 'me', 'notice', 'join', 'part', 'quit', 'system']);
+
+let _idb = null;
+function getDB() {
+  if (_idb) return Promise.resolve(_idb);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('wirgloo', 1);
+    req.onupgradeneeded = e => {
+      const store = e.target.result.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
+      store.createIndex('by_target', ['server', 'target'], { unique: false });
+    };
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+// In-memory cache populated by preloadLogs; loadLog reads from it synchronously.
+const msgCache = new Map();
+function msgCacheKey(server, target) { return `${server}\0${target}`; }
+
+async function preloadLogs(server) {
+  msgCache.clear();
+  try {
+    const db = await getDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('messages', 'readonly');
+      const req = tx.objectStore('messages').index('by_target')
+        .getAll(IDBKeyRange.bound([server, ''], [server, '￿']));
+      req.onsuccess = e => {
+        const byTarget = new Map();
+        for (const row of e.target.result) {
+          const k = msgCacheKey(server, row.target);
+          if (!byTarget.has(k)) byTarget.set(k, []);
+          byTarget.get(k).push({ type: row.type, nick: row.nick, text: row.text, ts: row.ts });
+        }
+        for (const [k, msgs] of byTarget) msgCache.set(k, msgs.slice(-LOG_MAX));
+        resolve();
+      };
+      req.onerror = e => reject(e.target.error);
+    });
+  } catch (err) { console.warn('IndexedDB preload failed', err); }
+}
+
+function persistMsg(target, m) {
+  if (!LOG_TYPES.has(m.type)) return;
+  const k = msgCacheKey(state.server, target);
+  if (!msgCache.has(k)) msgCache.set(k, []);
+  const arr = msgCache.get(k);
+  arr.push(m);
+  if (arr.length > LOG_MAX) arr.splice(0, arr.length - LOG_MAX);
+  getDB().then(db => {
+    const tx = db.transaction('messages', 'readwrite');
+    tx.objectStore('messages').add({ server: state.server, target, type: m.type, nick: m.nick, text: m.text, ts: m.ts });
+  }).catch(err => console.warn('IndexedDB write failed', err));
+}
+
+function loadLog(server, target) {
+  return msgCache.get(msgCacheKey(server, target)) || [];
+}
+
 // ── Session resume from URL ───────────────────────────────────────────────────
 {
   const urlSession = new URLSearchParams(location.search).get('s');
@@ -921,68 +983,6 @@ function handle(msg) {
       onDisconnect(msg.text);
       break;
   }
-}
-
-// ── Chat log persistence (IndexedDB) ─────────────────────────────────────────
-const LOG_MAX   = 500;
-const LOG_TYPES = new Set(['msg', 'me', 'notice', 'join', 'part', 'quit', 'system']);
-
-let _idb = null;
-function getDB() {
-  if (_idb) return Promise.resolve(_idb);
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('wirgloo', 1);
-    req.onupgradeneeded = e => {
-      const store = e.target.result.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
-      store.createIndex('by_target', ['server', 'target'], { unique: false });
-    };
-    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-// In-memory cache populated by preloadLogs; loadLog reads from it synchronously.
-const msgCache = new Map();
-function msgCacheKey(server, target) { return `${server}\0${target}`; }
-
-async function preloadLogs(server) {
-  msgCache.clear();
-  try {
-    const db = await getDB();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction('messages', 'readonly');
-      const req = tx.objectStore('messages').index('by_target')
-        .getAll(IDBKeyRange.bound([server, ''], [server, '￿']));
-      req.onsuccess = e => {
-        const byTarget = new Map();
-        for (const row of e.target.result) {
-          const k = msgCacheKey(server, row.target);
-          if (!byTarget.has(k)) byTarget.set(k, []);
-          byTarget.get(k).push({ type: row.type, nick: row.nick, text: row.text, ts: row.ts });
-        }
-        for (const [k, msgs] of byTarget) msgCache.set(k, msgs.slice(-LOG_MAX));
-        resolve();
-      };
-      req.onerror = e => reject(e.target.error);
-    });
-  } catch (err) { console.warn('IndexedDB preload failed', err); }
-}
-
-function persistMsg(target, m) {
-  if (!LOG_TYPES.has(m.type)) return;
-  const k = msgCacheKey(state.server, target);
-  if (!msgCache.has(k)) msgCache.set(k, []);
-  const arr = msgCache.get(k);
-  arr.push(m);
-  if (arr.length > LOG_MAX) arr.splice(0, arr.length - LOG_MAX);
-  getDB().then(db => {
-    const tx = db.transaction('messages', 'readwrite');
-    tx.objectStore('messages').add({ server: state.server, target, type: m.type, nick: m.nick, text: m.text, ts: m.ts });
-  }).catch(err => console.warn('IndexedDB write failed', err));
-}
-
-function loadLog(server, target) {
-  return msgCache.get(msgCacheKey(server, target)) || [];
 }
 
 // ── Channels ──────────────────────────────────────────────────────────────────
