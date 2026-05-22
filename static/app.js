@@ -141,7 +141,7 @@ const input         = $('input');
 const userlist      = $('userlist');
 
 // ── Version ───────────────────────────────────────────────────────────────────
-fetch('/version').then(r => r.json()).then(v => {
+fetch(BASE_PATH + '/version').then(r => r.json()).then(v => {
   const label = `${v.name} ${v.version}`;
   $('connect-version').textContent  = label;
   $('sidebar-version').textContent  = label;

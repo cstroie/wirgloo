@@ -17,6 +17,8 @@ import (
 	"net/http"
 	"os"
 
+	"strings"
+
 	wirgloo "github.com/cstroie/wirgloo"
 )
 
@@ -34,6 +36,14 @@ func main() {
 	bufferMax := flag.Int("buffer-max", BufferMax, "max messages buffered per session while browser is disconnected")
 	listPreview := flag.Int("list-preview", ListPreviewSize, "max channels shown in /list before filtering")
 	flag.Parse()
+
+	// Normalise base: ensure it starts with "/" and has no trailing "/".
+	if *base != "" {
+		if (*base)[0] != '/' {
+			*base = "/" + *base
+		}
+		*base = strings.TrimRight(*base, "/")
+	}
 
 	WsReconnectWindow = *sessionTimeout
 	BufferMax = *bufferMax
