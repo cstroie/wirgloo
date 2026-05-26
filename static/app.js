@@ -112,6 +112,16 @@ function scheduleLagPing(initialDelay) {
   }, delay);
 }
 
+function setConnDot(state) { // 'disconnected' | 'connecting' | 'connected' | 'error'
+  const dot = document.getElementById('conn-dot');
+  if (!dot) return;
+  dot.className = 'conn-dot' + (state !== 'disconnected' ? ' ' + state : '');
+  const labels = { disconnected: 'Disconnected', connecting: 'Connecting…', connected: 'Connected', error: 'Connection error' };
+  const label = labels[state] || 'Disconnected';
+  dot.title = label;
+  dot.setAttribute('aria-label', 'Connection status: ' + label);
+}
+
 function updateLagDisplay(ms) {
   const el = $('lag-display');
   if (!el) return;
@@ -548,6 +558,7 @@ connectForm.addEventListener('submit', e => {
   }
   setActive('*server*');
   setMyNick(nick);
+  setConnDot('connecting');
   appendMsg('*server*', { type: 'connecting', nick: '--', text: `Connecting to ${server}:${port}…` });
   openWS(server, port, nick, realname, tls, noverify, authMethod, pass);
 });
@@ -651,6 +662,7 @@ function handle(msg) {
       break;
 
     case 'connected': {
+      setConnDot('connected');
       const wasReconnect = state.connectParams && !state.connected;
       state.connected = true;
       resetAutoAway();
@@ -697,6 +709,7 @@ function handle(msg) {
     }
 
     case 'resumed': {
+      setConnDot('connected');
       state.connected = true;
       resetAutoAway();
       reconnectDelay = 1000;
@@ -728,6 +741,7 @@ function handle(msg) {
     }
 
     case 'connect_error':
+      setConnDot('error');
       state.channels.clear();
       state.active = null;
       document.title = 'wirgloo';
@@ -1604,10 +1618,16 @@ function renderUserlist() {
 function openPanel(panel) {
   document.getElementById('sidebar').classList.toggle('open', panel === 'sidebar');
   document.getElementById('userlist-panel').classList.toggle('open', panel === 'userlist');
-  const backdrop = $('panel-backdrop');
-  backdrop.classList.toggle('visible', !!panel);
+  $('settings-panel').classList.toggle('open', panel === 'settings');
+  $('settings-btn').classList.toggle('active', panel === 'settings');
+  $('panel-backdrop').classList.toggle('visible', panel === 'sidebar' || panel === 'userlist');
 }
 $('panel-backdrop').addEventListener('click', () => openPanel(null));
+$('settings-btn').addEventListener('click', () => {
+  const isOpen = $('settings-panel').classList.contains('open');
+  openPanel(isOpen ? null : 'settings');
+});
+$('settings-close-btn').addEventListener('click', () => openPanel(null));
 messages.addEventListener('click', e => {
   openPanel(null);
   const nl = e.target.closest('.nick-link');
@@ -2032,6 +2052,7 @@ function scheduleReconnect() {
   const secs = Math.round(reconnectDelay / 1000);
   appendMsg('*server*', { type: 'connecting', nick: '--', text: `Connection lost — reconnecting in ${secs}s…` });
   setTimeout(() => {
+    setConnDot('connecting');
     appendMsg('*server*', { type: 'connecting', nick: '--', text: 'Reconnecting…' });
     if (state.sessionId) {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -2050,6 +2071,7 @@ function scheduleReconnect() {
 }
 
 function onConnectFailed(reason) {
+  setConnDot('error');
   appendMsg('*server*', { type: 'error', nick: '!', text: reason });
   state.channels.clear();
   state.active = null;
@@ -2059,6 +2081,7 @@ function onConnectFailed(reason) {
 }
 
 function onDisconnect(reason) {
+  setConnDot('disconnected');
   clearTimeout(lagTimer);
   clearTimeout(listFilterTimer);
   clearTimeout(autoAwayTimer);

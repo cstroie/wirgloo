@@ -105,8 +105,10 @@
   <div id="chat-screen" class="hidden">
     <div id="sidebar">
       <div id="sidebar-header">
+        <span id="conn-dot" class="conn-dot" title="Disconnected" aria-label="Connection status: disconnected"></span>
         <div class="header-btns">
           <button id="theme-btn" title="Toggle theme" aria-label="Toggle theme">☀</button>
+          <button id="settings-btn" title="Settings" aria-label="Settings">⚙</button>
         </div>
       </div>
       <div id="channel-list" role="list" aria-label="Channels"></div>
@@ -142,6 +144,16 @@
           <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
         </div>
         <button type="button" id="send-btn">Send</button>
+      </div>
+
+      <div id="settings-panel" role="complementary" aria-label="Settings">
+        <div id="settings-header">
+          <h2>Settings</h2>
+          <button id="settings-close-btn" aria-label="Close settings">✕</button>
+        </div>
+        <div id="settings-body">
+          <p class="settings-placeholder">Settings coming soon.</p>
+        </div>
       </div>
     </div>
 
