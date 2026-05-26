@@ -88,11 +88,16 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 
 ## Quick start
 
-**Download a release** (coming soon) or build from source:
+**Download a release** from the [releases page](https://github.com/cstroie/wirgloo/releases):
 
 ```sh
-go install wirgloo   # once published to pkg.go.dev
+# Linux (amd64)
+curl -L https://github.com/cstroie/wirgloo/releases/latest/download/wirgloo-linux-amd64 -o wirgloo
+chmod +x wirgloo
+./wirgloo   # open http://localhost:6677
 ```
+
+Replace `linux-amd64` with `linux-arm64`, `darwin-amd64`, `darwin-arm64`, or `windows-amd64.exe` as needed.
 
 **Build from source** — requires Go 1.21+:
 
