@@ -157,6 +157,8 @@ function applyMarkdownSetting(enabled) {
   applyFontSize(font);
   const md = localStorage.getItem('wirgloo:cfg:markdown');
   applyMarkdownSetting(md !== 'off');
+  const notif = localStorage.getItem('wirgloo:cfg:notifications');
+  applyNotificationSetting(notif === 'on' && 'Notification' in window && Notification.permission === 'granted');
   document.addEventListener('click', e => {
     const btn = e.target.closest('[data-setting]');
     if (!btn) return;
@@ -167,6 +169,13 @@ function applyMarkdownSetting(enabled) {
       const on = btn.dataset.value === 'on';
       applyMarkdownSetting(on);
       localStorage.setItem('wirgloo:cfg:markdown', on ? 'on' : 'off');
+    } else if (btn.dataset.setting === 'notifications') {
+      if (btn.dataset.value === 'on') {
+        requestNotifyPermission();
+      } else {
+        applyNotificationSetting(false);
+        localStorage.setItem('wirgloo:cfg:notifications', 'off');
+      }
     }
   });
 })();
@@ -1228,13 +1237,24 @@ function bumpUnread(target, mention, fromNick, text) {
 }
 
 // ── Browser notifications ─────────────────────────────────────────────────────
-function requestNotifyPermission() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
+let notificationsEnabled = false;
+
+function applyNotificationSetting(enabled) {
+  notificationsEnabled = enabled;
+  document.querySelectorAll('[data-setting="notifications"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === (enabled ? 'on' : 'off'));
+  });
+}
+
+async function requestNotifyPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') await Notification.requestPermission();
+  applyNotificationSetting(Notification.permission === 'granted');
+  localStorage.setItem('wirgloo:cfg:notifications', notificationsEnabled ? 'on' : 'off');
 }
 
 function notify(target, fromNick, text) {
+  if (!notificationsEnabled) return;
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
   if (document.visibilityState === 'visible') return; // tab is focused
