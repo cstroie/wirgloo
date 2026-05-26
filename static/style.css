@@ -3,11 +3,11 @@
   --bg2:       #1a1b24;
   --bg3:       #22232e;
   --border:    rgba(255,255,255,0.07);
-  --accent:    #6c63ff;
+  --accent:    #5952e8;
   --accent2:   #4f46e5;
-  --accent-bg: rgba(108,99,255,0.12);
+  --accent-bg: rgba(89,82,232,0.12);
   --text:      #dde1f0;
-  --text-dim:  #6b7280;
+  --text-dim:  #8892a4;
   --text-head: #9ca3af;
   --mention:   #a78bfa;
   --dm-accent:     #2dd4bf;
@@ -45,7 +45,7 @@
     --accent2:   #3f38c4;
     --accent-bg: rgba(91,82,232,0.1);
     --text:      #1a1b2e;
-    --text-dim:  #6b7280;
+    --text-dim:  #555966;
     --text-head: #4b5563;
     --mention:   #6d28d9;
     --dm-accent:     #0d9488;
@@ -116,7 +116,7 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
 
 .connect-box h1 { font-size: 2rem; color: var(--accent); letter-spacing: 3px; text-align: center; }
 .connect-box .subtitle { color: var(--text-dim); text-align: center; margin-bottom: 28px; font-size: 0.8rem; }
-.app-version { display: block; color: var(--text-dim); font-size: 0.8rem; text-align: center; margin-top: 10px; opacity: 0.6; }
+.app-version { display: block; color: var(--text-dim); font-size: 0.8rem; text-align: center; margin-top: 10px; }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field label { color: var(--text-head); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; }
