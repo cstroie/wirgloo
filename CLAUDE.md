@@ -95,6 +95,12 @@ Auth method is chosen at connect time and held in `Session.authMethod`/`authPass
 - Message list: no padding/gap on `#messages`; reduced per-message padding for tight spacing.
 - `logMax` (default 500) caps both IndexedDB writes (trimmed per channel on each write) and the DOM message list (trimmed on append). Setting changes apply immediately via `enforceLogMax()`.
 
+### Releases & cross-platform builds
+
+Tag format: `vYYMMDD` (e.g. `v260526`). `make dist` builds for all five platforms; Linux targets use `CGO_ENABLED=0` for static linking (works on Alpine/musl and any glibc). GitHub Actions (`.github/workflows/release.yml`) runs on each tag push and uploads all binaries to the GitHub release automatically.
+
+Binary name: `wirgloo-<os>-<arch>[.exe]`.
+
 ## Code conventions
 
 - **No framework, no ORM, no generated code.** Keep dependencies minimal — currently only `gorilla/websocket`.
