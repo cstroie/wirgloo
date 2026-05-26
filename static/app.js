@@ -125,6 +125,45 @@ function updateLagDisplay(ms) {
   el.style.color = color;
 }
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
+function isLightTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'light';
+}
+
+function updateThemeBtn() {
+  const light = isLightTheme();
+  const icon = light ? '☾' : '☀';
+  const tip  = light ? 'Switch to dark theme' : 'Switch to light theme';
+  [document.getElementById('theme-btn'), document.getElementById('connect-theme-btn')].forEach(b => {
+    if (!b) return;
+    b.textContent = icon;
+    b.title = tip;
+    b.setAttribute('aria-label', tip);
+  });
+  // keep theme-color meta tags in sync
+  const dark_meta  = document.querySelector('meta[name="theme-color"][media*="dark"]');
+  const light_meta = document.querySelector('meta[name="theme-color"][media*="light"]');
+  if (dark_meta)  dark_meta.content  = light ? '#f1f2f6' : '#13141a';
+  if (light_meta) light_meta.content = light ? '#f1f2f6' : '#13141a';
+}
+
+function toggleTheme() {
+  const next = isLightTheme() ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('wirgloo:theme', next);
+  updateThemeBtn();
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('wirgloo:theme');
+  const resolved = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', resolved);
+  updateThemeBtn();
+  document.addEventListener('click', e => {
+    if (e.target.id === 'theme-btn' || e.target.id === 'connect-theme-btn') toggleTheme();
+  });
+})();
+
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const connectScreen  = $('connect-screen');
@@ -2037,7 +2076,7 @@ function nickHue(nick) {
 function nickColor(nick) {
   const hue = nickHue(nick);
   if (hue === null) return '';
-  const light = window.matchMedia('(prefers-color-scheme: light)').matches ? '38%' : '68%';
+  const light = isLightTheme() ? '38%' : '68%';
   return `hsl(${hue},65%,${light})`;
 }
 
