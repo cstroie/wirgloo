@@ -269,6 +269,7 @@ html[data-font="large"]  { --font-size: 16px; }
 }
 .settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
 .settings-input::placeholder { color: var(--text-dim); }
+.settings-section { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); padding-bottom: 2px; border-bottom: 1px solid var(--bg3); margin-bottom: -6px; }
 
 #channel-list { flex: 1; overflow-y: auto; padding: 6px 0; }
 
