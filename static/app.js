@@ -1667,21 +1667,22 @@ function renderUserlist() {
     }
 
     const chan = state.dmOriginChannel;
+    const isSelf = nick === state.nick;
     const chanPrefix = chan ? (state.channels.get(chan)?.nicks.get(nick) || '') : '';
     const isOp    = chanPrefix.includes('@');
     const isVoice = chanPrefix.includes('+');
     const ignored = state.ignored.has(nick.toLowerCase());
     footer.innerHTML =
-      (chan ? `<button id="uf-op"    class="toggle-btn${isOp    ? ' active' : ''}">@ Op</button>` +
+      (!isSelf && chan ? `<button id="uf-op"    class="toggle-btn${isOp    ? ' active' : ''}">@ Op</button>` +
               `<button id="uf-voice" class="toggle-btn${isVoice ? ' active' : ''}">+ Voice</button>` +
               `<button id="uf-ban"  class="danger">⊘ Ban</button>` +
               `<button id="uf-kick" class="danger">✕ Kick</button>` +
               `<div class="userlist-footer-sep"></div>` : '') +
-      `<button id="uf-ignore" class="toggle-btn${ignored ? ' active' : ''}">⊖ Ignore</button>` +
-      `<div class="userlist-footer-sep"></div>` +
+      (!isSelf ? `<button id="uf-ignore" class="toggle-btn${ignored ? ' active' : ''}">⊖ Ignore</button>` +
+                 `<div class="userlist-footer-sep"></div>` : '') +
       `<button id="uf-whois">ℹ Info</button>` +
-      `<button id="uf-ping">↔ Ping</button>` +
-      `<button id="uf-version">© Version</button>` +
+      (!isSelf ? `<button id="uf-ping">↔ Ping</button>` +
+                 `<button id="uf-version">© Version</button>` : '') +
       `<button id="close-dm-btn" class="danger">✕ Close</button>`;
     footer.classList.remove('hidden');
     footer.querySelector('#uf-whois').addEventListener('click', () => {
@@ -1746,10 +1747,8 @@ function renderUserlist() {
     const badge = isAway ? `<span class="user-status away" title="Away">⏾</span>`
                          : `<span class="user-status"></span>`;
     el.innerHTML = `<span class="user-nick">${prefixHtml}<span style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</span></span>${badge}`;
-    if (nick !== state.nick) {
-      el.style.cursor = 'pointer';
-      el.addEventListener('click', () => openDM(nick, originChannel));
-    }
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => openDM(nick, originChannel));
     userlist.appendChild(el);
   });
 }
