@@ -126,6 +126,7 @@ html[data-font="large"]  { --font-size: 16px; }
 .connect-box h1 { font-size: 2rem; color: var(--accent); letter-spacing: 3px; text-align: center; }
 .connect-box .subtitle { color: var(--text-dim); text-align: center; margin-bottom: 28px; font-size: 0.8rem; }
 .app-version { display: block; color: var(--text-dim); font-size: 0.8rem; text-align: center; margin-top: 10px; }
+#connect-version { opacity: 0.45; }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field label { color: var(--text-head); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; }
