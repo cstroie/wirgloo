@@ -1226,7 +1226,7 @@ function setActive(target) {
   ch.mention = false;
   renderChannelList();
   renderMessages(target);
-  document.getElementById('userlist-panel').classList.toggle('wide', target === '*server*');
+  document.getElementById('userlist-panel').classList.toggle('wide', target === '*server*' || isDM(target));
   renderUserlist();
   updateTargetName(target);
   if (isDM(target)) updateDMTopic(target);
