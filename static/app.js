@@ -1690,33 +1690,31 @@ function renderUserlist() {
       state.pendingWhois = nick;
       send({ type: 'raw', line: `WHOIS ${nick}` });
     });
-    footer.querySelector('#uf-ping').addEventListener('click', () => {
-      send({ type: 'raw', line: `PRIVMSG ${nick} :\x01PING ${Date.now()}\x01` });
-    });
-    footer.querySelector('#uf-version').addEventListener('click', () => {
-      send({ type: 'raw', line: `PRIVMSG ${nick} :\x01VERSION\x01` });
-    });
     footer.querySelector('#close-dm-btn').addEventListener('click', () => removeChannel(nick));
-    footer.querySelector('#uf-ignore').addEventListener('click', () => {
-      const key = nick.toLowerCase();
-      if (state.ignored.has(key)) state.ignored.delete(key);
-      else state.ignored.add(key);
-      saveIgnored();
-      renderUserlist();
-    });
-    if (chan) {
-      footer.querySelector('#uf-op').addEventListener('click', e => {
-        const on = !e.currentTarget.classList.contains('active');
-        send({ type: 'raw', line: `MODE ${chan} ${on ? '+' : '-'}o ${nick}` });
-        e.currentTarget.classList.toggle('active', on);
+    if (!isSelf) {
+      footer.querySelector('#uf-ignore').addEventListener('click', () => {
+        const key = nick.toLowerCase();
+        if (state.ignored.has(key)) state.ignored.delete(key);
+        else state.ignored.add(key);
+        saveIgnored();
+        renderUserlist();
       });
-      footer.querySelector('#uf-voice').addEventListener('click', e => {
-        const on = !e.currentTarget.classList.contains('active');
-        send({ type: 'raw', line: `MODE ${chan} ${on ? '+' : '-'}v ${nick}` });
-        e.currentTarget.classList.toggle('active', on);
-      });
-      footer.querySelector('#uf-ban').addEventListener('click',  () => send({ type: 'raw', line: `MODE ${chan} +b ${nick}!*@*` }));
-      footer.querySelector('#uf-kick').addEventListener('click', () => send({ type: 'raw', line: `KICK ${chan} ${nick} :Kicked` }));
+      footer.querySelector('#uf-ping').addEventListener('click',    () => send({ type: 'raw', line: `PRIVMSG ${nick} :\x01PING ${Date.now()}\x01` }));
+      footer.querySelector('#uf-version').addEventListener('click', () => send({ type: 'raw', line: `PRIVMSG ${nick} :\x01VERSION\x01` }));
+      if (chan) {
+        footer.querySelector('#uf-op').addEventListener('click', e => {
+          const on = !e.currentTarget.classList.contains('active');
+          send({ type: 'raw', line: `MODE ${chan} ${on ? '+' : '-'}o ${nick}` });
+          e.currentTarget.classList.toggle('active', on);
+        });
+        footer.querySelector('#uf-voice').addEventListener('click', e => {
+          const on = !e.currentTarget.classList.contains('active');
+          send({ type: 'raw', line: `MODE ${chan} ${on ? '+' : '-'}v ${nick}` });
+          e.currentTarget.classList.toggle('active', on);
+        });
+        footer.querySelector('#uf-ban').addEventListener('click',  () => send({ type: 'raw', line: `MODE ${chan} +b ${nick}!*@*` }));
+        footer.querySelector('#uf-kick').addEventListener('click', () => send({ type: 'raw', line: `KICK ${chan} ${nick} :Kicked` }));
+      }
     }
 
     userlist.appendChild(card);
