@@ -63,13 +63,14 @@
 - [X] Show lag
 
 ### Comfort
+- [X] enable / disable markdown highlight
 - [ ] Message search within a channel (/search keyword)
-- [ ] Font size / compact mode toggle
+- [X] Font size / compact mode toggle
 - [ ] Sound notification option alongside browser notifications
 
 ### Programming
  - [X] Document the websocket protocol messages
  - [X] Add a screenshot
- - [ ] Configuration panel: color scheme, markdown parsing
+ - [X] Configuration panel: color scheme, markdown parsing
  - [ ] Add a spinner near the channel name, left panel, while the content is still reloading
 

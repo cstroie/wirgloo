@@ -135,6 +135,42 @@ function updateLagDisplay(ms) {
   el.style.color = color;
 }
 
+// ── Settings ──────────────────────────────────────────────────────────────────
+let markdownEnabled = true;
+
+function applyFontSize(size) {
+  document.documentElement.setAttribute('data-font', size);
+  document.querySelectorAll('[data-setting="font"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === size);
+  });
+}
+
+function applyMarkdownSetting(enabled) {
+  markdownEnabled = enabled;
+  document.querySelectorAll('[data-setting="markdown"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === (enabled ? 'on' : 'off'));
+  });
+}
+
+(function initSettings() {
+  const font = localStorage.getItem('wirgloo:cfg:font') || 'medium';
+  applyFontSize(font);
+  const md = localStorage.getItem('wirgloo:cfg:markdown');
+  applyMarkdownSetting(md !== 'off');
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-setting]');
+    if (!btn) return;
+    if (btn.dataset.setting === 'font') {
+      applyFontSize(btn.dataset.value);
+      localStorage.setItem('wirgloo:cfg:font', btn.dataset.value);
+    } else if (btn.dataset.setting === 'markdown') {
+      const on = btn.dataset.value === 'on';
+      applyMarkdownSetting(on);
+      localStorage.setItem('wirgloo:cfg:markdown', on ? 'on' : 'off');
+    }
+  });
+})();
+
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function isLightTheme() {
   return document.documentElement.getAttribute('data-theme') === 'light';
@@ -169,13 +205,13 @@ function recomputeNickColors() {
 function toggleTheme() {
   const next = isLightTheme() ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('wirgloo:theme', next);
+  localStorage.setItem('wirgloo:cfg:theme', next);
   updateThemeBtn();
   recomputeNickColors();
 }
 
 (function initTheme() {
-  const saved = localStorage.getItem('wirgloo:theme');
+  const saved = localStorage.getItem('wirgloo:cfg:theme');
   const resolved = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
   document.documentElement.setAttribute('data-theme', resolved);
   updateThemeBtn();
@@ -2185,7 +2221,7 @@ function renderText(raw, noMarkdown=false) {
 
   const flush = () => {
     if (!buf) return;
-    let s = linkify((hasIRC || noMarkdown) ? escHtml(buf) : applyMarkdown(escHtml(buf)));
+    let s = linkify((hasIRC || noMarkdown || !markdownEnabled) ? escHtml(buf) : applyMarkdown(escHtml(buf)));
     const st = [];
     if (bold)   st.push('font-weight:bold');
     if (italic) st.push('font-style:italic');

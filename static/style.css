@@ -69,7 +69,10 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body { height: 100%; font-family: var(--font-mono); background: var(--bg); color: var(--text); font-size: 14px; }
+html, body { height: 100%; font-family: var(--font-mono); background: var(--bg); color: var(--text); font-size: var(--font-size, 14px); }
+html[data-font="small"]  { --font-size: 12px; }
+html[data-font="medium"] { --font-size: 14px; }
+html[data-font="large"]  { --font-size: 16px; }
 
 /* ── Connect screen ─────────────────────────────────── */
 #connect-screen {
@@ -245,8 +248,19 @@ html, body { height: 100%; font-family: var(--font-mono); background: var(--bg);
   transition: color 0.15s, background 0.15s;
 }
 #settings-close-btn:hover { color: var(--text); background: var(--bg3); }
-#settings-body { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+#settings-body { padding: 18px; display: flex; flex-direction: column; gap: 20px; }
 .settings-placeholder { color: var(--text-dim); font-size: 0.85rem; font-style: italic; }
+.settings-group { display: flex; flex-direction: column; gap: 8px; }
+.settings-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-head); }
+.settings-options { display: flex; gap: 6px; }
+.settings-option {
+  flex: 1; padding: 7px 0; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text-dim); font-family: var(--font-mono); font-size: 0.82rem;
+  cursor: pointer; text-align: center; transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.settings-option:hover { color: var(--text); border-color: var(--text-dim); }
+.settings-option.active { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
 
 #channel-list { flex: 1; overflow-y: auto; padding: 6px 0; }
 
