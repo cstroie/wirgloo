@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - {goos: linux,   goarch: amd64}
+          - {goos: linux,   goarch: arm64}
+          - {goos: darwin,  goarch: amd64}
+          - {goos: darwin,  goarch: arm64}
+          - {goos: windows, goarch: amd64}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          EXT=""
+          [ "$GOOS" = "windows" ] && EXT=".exe"
+          go build -ldflags "-X main.version=${GITHUB_REF_NAME}" \
+            -o wirgloo-${GOOS}-${GOARCH}${EXT} \
+            ./cmd/wirgloo
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: wirgloo-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
