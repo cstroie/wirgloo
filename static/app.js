@@ -255,7 +255,7 @@ function applyMarkdownSetting(enabled) {
       stripColors = on;
       syncToggleBtns('stripcolors', on);
       localStorage.setItem('wirgloo:cfg:stripcolors', on ? 'on' : 'off');
-      messages.classList.toggle('no-irc-colors', on);
+      messages.classList.toggle('hide-irc-colors', on);
     }
   });
 })();
@@ -323,7 +323,7 @@ function setMyNick(nick) {
 }
 const channelList   = $('channel-list');
 const messages      = $('messages');
-messages.classList.toggle('no-irc-colors', stripColors);
+messages.classList.toggle('hide-irc-colors', stripColors);
 messages.classList.toggle('hide-joins', hideJoinPart);
 const targetName    = $('target-name');
 const topicText     = $('topic-text');
@@ -1369,7 +1369,7 @@ function renderChannelList() {
     const isSrv = target === '*server*';
     const isLst = target === '*list*';
     el.className = 'chan-item' +
-      (isDM ? ' dm' : isSrv ? ' srv' : isLst ? ' lst' : '') +
+      (isDM ? ' dm' : isSrv ? ' srv' : isLst ? ' chan-list' : '') +
       (target === state.active ? ' active' : '') +
       (ch.hidden ? ' hidden' : '') +
       (ch.offline ? ' offline' : '') +
@@ -1679,20 +1679,20 @@ function renderUserlist() {
               `<div class="userlist-footer-sep"></div>` : '') +
       `<button id="uf-ignore" class="toggle-btn${ignored ? ' active' : ''}">⊖ Ignore</button>` +
       `<div class="userlist-footer-sep"></div>` +
-      `<button id="whois-btn">ℹ Info</button>` +
-      `<button id="ping-btn">↔ Ping</button>` +
-      `<button id="version-btn">© Version</button>` +
+      `<button id="uf-whois">ℹ Info</button>` +
+      `<button id="uf-ping">↔ Ping</button>` +
+      `<button id="uf-version">© Version</button>` +
       `<button id="close-dm-btn" class="danger">✕ Close</button>`;
     footer.classList.remove('hidden');
-    footer.querySelector('#whois-btn').addEventListener('click', () => {
+    footer.querySelector('#uf-whois').addEventListener('click', () => {
       state.whoisUsers.delete(nick);
       state.pendingWhois = nick;
       send({ type: 'raw', line: `WHOIS ${nick}` });
     });
-    footer.querySelector('#ping-btn').addEventListener('click', () => {
+    footer.querySelector('#uf-ping').addEventListener('click', () => {
       send({ type: 'raw', line: `PRIVMSG ${nick} :\x01PING ${Date.now()}\x01` });
     });
-    footer.querySelector('#version-btn').addEventListener('click', () => {
+    footer.querySelector('#uf-version').addEventListener('click', () => {
       send({ type: 'raw', line: `PRIVMSG ${nick} :\x01VERSION\x01` });
     });
     footer.querySelector('#close-dm-btn').addEventListener('click', () => removeChannel(nick));

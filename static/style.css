@@ -302,13 +302,13 @@ html[data-font="large"]  { --font-size: 16px; }
 .chan-item.dm.active::before  { background: var(--dm-accent);  }
 .chan-item.srv.active     { background: var(--srv-accent-bg); color: var(--srv-accent); }
 .chan-item.srv.active::before { background: var(--srv-accent); }
-.chan-item.lst.active     { background: var(--lst-accent-bg); color: var(--lst-accent); }
-.chan-item.lst.active::before { background: var(--lst-accent); }
+.chan-item.chan-list.active     { background: var(--lst-accent-bg); color: var(--lst-accent); }
+.chan-item.chan-list.active::before { background: var(--lst-accent); }
 .chan-item.unread  { color: var(--text);    font-weight: bold; }
 .chan-item.mention { color: var(--mention); font-weight: bold; }
 .chan-item.dm.unread,  .chan-item.dm.mention  { color: var(--dm-accent);  }
 .chan-item.srv.unread, .chan-item.srv.mention { color: var(--srv-accent); }
-.chan-item.lst.unread, .chan-item.lst.mention { color: var(--lst-accent); }
+.chan-item.chan-list.unread, .chan-item.chan-list.mention { color: var(--lst-accent); }
 .chan-item.offline { color: var(--text-dim); font-style: italic; opacity: 0.6; }
 .chan-item.hidden { display: none; }
 .chan-item .unread-badge {
@@ -534,14 +534,14 @@ html[data-font="large"]  { --font-size: 16px; }
 #userlist-footer #srv-help     { color: var(--btn-info); }
 #userlist-footer #srv-ping:hover { background: color-mix(in srgb, var(--btn-net)  10%, transparent); }
 #userlist-footer #srv-help:hover { background: color-mix(in srgb, var(--btn-info) 10%, transparent); }
-#userlist-footer #whois-btn    { color: var(--btn-info); }
-#userlist-footer #ping-btn     { color: var(--btn-net);  }
-#userlist-footer #version-btn  { color: var(--btn-meta); }
+#userlist-footer #uf-whois    { color: var(--btn-info); }
+#userlist-footer #uf-ping     { color: var(--btn-net);  }
+#userlist-footer #uf-version  { color: var(--btn-meta); }
 #userlist-footer #uf-ignore    { color: var(--btn-warn); }
 #userlist-footer #uf-ignore.active        { background: color-mix(in srgb, var(--btn-warn) 15%, transparent); font-weight: bold; }
-#userlist-footer #whois-btn:hover   { background: color-mix(in srgb, var(--btn-info) 10%, transparent); }
-#userlist-footer #ping-btn:hover    { background: color-mix(in srgb, var(--btn-net)  10%, transparent); }
-#userlist-footer #version-btn:hover { background: color-mix(in srgb, var(--btn-meta) 10%, transparent); }
+#userlist-footer #uf-whois:hover   { background: color-mix(in srgb, var(--btn-info) 10%, transparent); }
+#userlist-footer #uf-ping:hover    { background: color-mix(in srgb, var(--btn-net)  10%, transparent); }
+#userlist-footer #uf-version:hover { background: color-mix(in srgb, var(--btn-meta) 10%, transparent); }
 #userlist-footer #uf-ignore:hover   { background: color-mix(in srgb, var(--btn-warn) 10%, transparent); }
 .userlist-footer-sep { height: 1px; background: var(--border); margin: 2px 0; grid-column: 1 / -1; }
 .dm-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 2px; }
@@ -761,8 +761,8 @@ html[data-font="large"]  { --font-size: 16px; }
 #messages.hide-joins .msg.part,
 #messages.hide-joins .msg.quit { display: none; }
 
-#messages.no-irc-colors span[style*="color"],
-#messages.no-irc-colors span[style*="background"] {
+#messages.hide-irc-colors span[style*="color"],
+#messages.hide-irc-colors span[style*="background"] {
   color: inherit !important;
   background: none !important;
   padding: 0 !important;
