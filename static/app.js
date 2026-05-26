@@ -1379,7 +1379,8 @@ function renderChannelList() {
     else if (target === '*list*') { icon = '☰'; label = 'Channel list'; }
     else if (target.startsWith('#')) { icon = '＃'; label = target.slice(1); }
     else { icon = '◉'; label = target; } // DM
-    el.innerHTML = `<span class="chan-icon">${icon}</span><span class="chan-label">${escHtml(label)}</span>`;
+    const dmColor = isDM ? (nickColor(target) || '') : '';
+    el.innerHTML = `<span class="chan-icon"${dmColor ? ` style="color:${dmColor}"` : ''}>${icon}</span><span class="chan-label"${dmColor ? ` style="color:${dmColor}"` : ''}>${escHtml(label)}</span>`;
     if (!ch.offline && ch.unread > 0) {
       el.innerHTML += `<span class="unread-badge">${ch.unread}</span>`;
     } else if (!ch.offline && target !== '*server*' && target !== '*list*') {
