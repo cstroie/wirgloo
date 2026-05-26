@@ -27,14 +27,20 @@ import (
 var version = "dev"
 
 func main() {
+	// HTTP server
 	addr := flag.String("addr", "0.0.0.0:6677", "listen address")
 	base := flag.String("base", "", "base path prefix for all routes, e.g. /wirgloo")
 	dev := flag.Bool("dev", false, "serve static files from disk (dev mode)")
-	logJSON := flag.Bool("log-json", false, "emit logs as JSON")
-	logLevel := flag.String("log-level", "info", "log level: debug, info, warn, error")
+
+	// Session
 	sessionTimeout := flag.Duration("session-timeout", WsReconnectWindow, "how long an IRC session survives a browser disconnect")
 	bufferMax := flag.Int("buffer-max", BufferMax, "max messages buffered per session while browser is disconnected")
 	listPreview := flag.Int("list-preview", ListPreviewSize, "max channels shown in /list before filtering")
+
+	// Logging
+	logLevel := flag.String("log-level", "info", "log level: debug, info, warn, error")
+	logJSON := flag.Bool("log-json", false, "emit logs as JSON")
+
 	flag.Parse()
 
 	// Normalise base: ensure it starts with "/" and has no trailing "/".

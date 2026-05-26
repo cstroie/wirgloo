@@ -71,4 +71,5 @@
  - [X] Document the websocket protocol messages
  - [X] Add a screenshot
  - [ ] Configuration panel: color scheme, markdown parsing
+ - [ ] Add a spinner near the channel name, left panel, while the content is still reloading
 
