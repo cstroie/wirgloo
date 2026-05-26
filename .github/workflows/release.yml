@@ -10,11 +10,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - {goos: linux,   goarch: amd64}
-          - {goos: linux,   goarch: arm64}
-          - {goos: darwin,  goarch: amd64}
-          - {goos: darwin,  goarch: arm64}
-          - {goos: windows, goarch: amd64}
+          - {goos: linux,   goarch: amd64, cgo: '0'}
+          - {goos: linux,   goarch: arm64, cgo: '0'}
+          - {goos: darwin,  goarch: amd64, cgo: '1'}
+          - {goos: darwin,  goarch: arm64, cgo: '1'}
+          - {goos: windows, goarch: amd64, cgo: '1'}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
         run: |
           EXT=""
           [ "$GOOS" = "windows" ] && EXT=".exe"

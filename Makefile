@@ -16,10 +16,10 @@ build:
 dist: $(PLATFORMS)
 
 linux/amd64:
-	GOOS=linux   GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY)-linux-amd64   ./cmd/wirgloo
+	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY)-linux-amd64   ./cmd/wirgloo
 
 linux/arm64:
-	GOOS=linux   GOARCH=arm64 go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY)-linux-arm64   ./cmd/wirgloo
+	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY)-linux-arm64   ./cmd/wirgloo
 
 darwin/amd64:
 	GOOS=darwin  GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY)-darwin-amd64  ./cmd/wirgloo
