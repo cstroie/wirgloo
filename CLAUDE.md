@@ -84,6 +84,17 @@ Auth method is chosen at connect time and held in `Session.authMethod`/`authPass
 
 `main.version` is injected at build time via `-ldflags`; falls back to `"dev"`. It is exposed at `GET /version` as `{"name":"wirgloo","version":"..."}` and via `session.AppVersion` (set from `main`) for CTCP VERSION replies and the browser UI.
 
+### Saved profiles
+
+`wirgloo:profiles` is an array of objects `{ server, port, tls, nick, networkName? }`. `saveProfile()` upserts by `server+port`. When the server sends `NETWORK=` via 005 (`isupport_network` WS message), `updateProfileNetworkName()` patches the matching profile in-place. The Saved dropdown shows `NetworkName (server)` when `networkName` is present, otherwise `server:port (TLS)`.
+
+### UI styling conventions
+
+- Version text uses `.app-version` (color: `--text-dim`). The connect-window instance (`#connect-version`) is additionally dimmed with `opacity: 0.45` so it recedes further than the sidebar version.
+- CSS variables: `--text` (normal), `--text-dim` (secondary/muted), `--text-head` (labels/headings), `--accent` (highlights).
+- Message list: no padding/gap on `#messages`; reduced per-message padding for tight spacing.
+- `logMax` (default 500) caps both IndexedDB writes (trimmed per channel on each write) and the DOM message list (trimmed on append). Setting changes apply immediately via `enforceLogMax()`.
+
 ## Code conventions
 
 - **No framework, no ORM, no generated code.** Keep dependencies minimal — currently only `gorilla/websocket`.
