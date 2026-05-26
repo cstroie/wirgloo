@@ -1448,6 +1448,7 @@ function appendMsg(target, m) {
     const last = messages.lastElementChild;
     const grouped = canGroup(m, last?.dataset.nick, parseFloat(last?.dataset.ts || 0), last?.dataset.msgtype);
     messages.appendChild(buildMsgEl(m, target, grouped));
+    while (messages.children.length > logMax) messages.firstElementChild.remove();
     if (!userScrolledUp) messages.scrollTop = messages.scrollHeight;
   }
 }
