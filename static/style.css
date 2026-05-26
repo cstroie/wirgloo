@@ -516,8 +516,13 @@ html[data-font="large"]  { --font-size: 16px; }
   padding: 7px 10px; cursor: pointer; transition: color 0.15s, background 0.15s;
   text-align: left;
 }
-#userlist-footer button:hover { color: var(--text); background: var(--bg3); }
+#userlist-footer button:hover        { color: var(--text); background: var(--bg3); }
+#userlist-footer button.danger       { color: color-mix(in srgb, var(--error) 55%, var(--text-dim)); }
 #userlist-footer button.danger:hover { color: var(--error); background: rgba(248,113,113,0.1); }
+#userlist-footer button.toggle-btn   { color: var(--btn-ok); }
+#userlist-footer button.toggle-btn.active        { color: var(--btn-ok); background: color-mix(in srgb, var(--btn-ok) 15%, transparent); font-weight: bold; }
+#userlist-footer button.toggle-btn:hover         { background: color-mix(in srgb, var(--btn-ok) 10%, transparent); }
+#userlist-footer button.toggle-btn.active:hover  { background: color-mix(in srgb, var(--btn-ok) 22%, transparent); }
 #userlist-footer #srv-ping     { color: var(--btn-net);  }
 #userlist-footer #srv-help     { color: var(--btn-info); }
 #userlist-footer #srv-ping:hover { background: color-mix(in srgb, var(--btn-net)  10%, transparent); }
@@ -526,14 +531,11 @@ html[data-font="large"]  { --font-size: 16px; }
 #userlist-footer #ping-btn     { color: var(--btn-net);  }
 #userlist-footer #version-btn  { color: var(--btn-meta); }
 #userlist-footer #uf-ignore    { color: var(--btn-warn); }
-#userlist-footer #uf-op,
-#userlist-footer #uf-voice     { color: var(--btn-ok);   }
+#userlist-footer #uf-ignore.active        { background: color-mix(in srgb, var(--btn-warn) 15%, transparent); font-weight: bold; }
 #userlist-footer #whois-btn:hover   { background: color-mix(in srgb, var(--btn-info) 10%, transparent); }
 #userlist-footer #ping-btn:hover    { background: color-mix(in srgb, var(--btn-net)  10%, transparent); }
 #userlist-footer #version-btn:hover { background: color-mix(in srgb, var(--btn-meta) 10%, transparent); }
 #userlist-footer #uf-ignore:hover   { background: color-mix(in srgb, var(--btn-warn) 10%, transparent); }
-#userlist-footer #uf-op:hover,
-#userlist-footer #uf-voice:hover    { background: color-mix(in srgb, var(--btn-ok)   10%, transparent); }
 .userlist-footer-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .dm-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 2px; }
 .user-badge {
