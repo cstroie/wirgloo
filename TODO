@@ -64,6 +64,11 @@
 
 ### Comfort
 - [X] enable / disable markdown highlight
+- [X] Hide join / part / quit messages (toggle)
+- [X] Enter to send toggle (off = Ctrl+Enter)
+- [X] Strip IRC colour codes toggle
+- [X] Auto-away timeout (minutes, 0 = off)
+- [X] Configurable max message history (log max)
 - [ ] Message search within a channel (/search keyword)
 - [X] Font size / compact mode toggle
 - [X] Sound notification option alongside browser notifications
