@@ -73,7 +73,7 @@
           <label for="nick">Nickname</label>
           <div class="input-with-btn">
             <input type="text" id="nick" placeholder="yournick" required>
-            <button type="button" id="nick-suggest-btn" title="Suggest a nick">&#x21BA;</button>
+            <button type="button" id="nick-suggest-btn" title="Suggest a nick" aria-label="Suggest a nick">&#x21BA;</button>
           </div>
         </div>
         <div class="field">
@@ -94,7 +94,7 @@
           <label for="pass">Password</label>
           <input type="password" id="pass" placeholder="password" autocomplete="current-password">
         </div>
-        <button type="submit" id="connect-btn">Connect</button>
+        <button type="submit" id="connect-btn" aria-label="Connect to server">Connect</button>
       </form>
       <small id="connect-version" class="app-version"></small>
     </div>
@@ -131,9 +131,9 @@
       </div>
       <div id="list-sort-bar" class="hidden" role="group" aria-label="Sort and filter channels">
         <span class="sort-label">Sort by</span>
-        <button class="sort-btn" data-sort="users">Users ↓</button>
-        <button class="sort-btn" data-sort="name">Name</button>
-        <button class="sort-btn" data-sort="topic">Topic</button>
+        <button class="sort-btn" data-sort="users" aria-label="Sort by users">Users ↓</button>
+        <button class="sort-btn" data-sort="name" aria-label="Sort by name">Name</button>
+        <button class="sort-btn" data-sort="topic" aria-label="Sort by topic">Topic</button>
         <input type="search" id="list-filter" placeholder="Filter channels…" autocomplete="off" spellcheck="false" aria-label="Filter channels">
       </div>
       <div id="messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
@@ -143,7 +143,7 @@
           <span id="my-nick" aria-label="Current nick"></span>
           <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
         </div>
-        <button type="button" id="send-btn">Send</button>
+        <button type="button" id="send-btn" aria-label="Send message">⏎ Send</button>
       </div>
 
       <div id="settings-panel" role="complementary" aria-label="Settings">
@@ -231,7 +231,7 @@
       <h1>wirgloo</h1>
       <p class="subtitle">Restoring session…</p>
       <div class="restore-spinner"></div>
-      <button id="restore-cancel-btn">Cancel — show connect form</button>
+      <button id="restore-cancel-btn" aria-label="Cancel restore and show connect form">Cancel — show connect form</button>
     </div>
   </div>
 
