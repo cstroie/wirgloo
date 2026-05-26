@@ -79,8 +79,9 @@ html[data-font="large"]  { --font-size: 16px; }
   display: flex; align-items: center; justify-content: center; height: 100%;
   background: var(--bg); position: relative;
 }
+#connect-header { position: absolute; top: 0; right: 0; }
 #connect-theme-btn {
-  position: absolute; top: 16px; right: 16px;
+  position: static;
   background: none; border: none; color: var(--text-dim); cursor: pointer;
   font-size: 1.1rem; padding: 6px 8px; border-radius: 6px;
   transition: color 0.15s, background 0.15s;

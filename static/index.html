@@ -15,12 +15,14 @@
 </head>
 <body>
   <div id="connect-screen">
-    <button id="connect-theme-btn" title="Toggle theme" aria-label="Toggle theme">☀</button>
+    <header id="connect-header">
+      <button id="connect-theme-btn" title="Toggle theme" aria-label="Toggle theme">☀</button>
+    </header>
     <main>
     <div class="connect-box">
       <h1>wirgloo</h1>
       <p class="subtitle">Web IRC Client</p>
-      <div id="connect-error" class="error-msg hidden"></div>
+      <div id="connect-error" class="error-msg hidden" role="alert"></div>
       <form id="connect-form">
         <div class="field">
           <label for="network">Network</label>
@@ -96,7 +98,9 @@
         </div>
         <button type="submit" id="connect-btn" aria-label="Connect to server">Connect</button>
       </form>
-      <small id="connect-version" class="app-version"></small>
+      <footer>
+        <small id="connect-version" class="app-version"></small>
+      </footer>
     </div>
     </main>
   </div>
@@ -227,12 +231,14 @@
   </div>
 
   <div id="restore-screen" class="hidden">
-    <div class="connect-box restore-box">
-      <h1>wirgloo</h1>
-      <p class="subtitle">Restoring session…</p>
-      <div class="restore-spinner"></div>
-      <button id="restore-cancel-btn" aria-label="Cancel restore and show connect form">Cancel — show connect form</button>
-    </div>
+    <main>
+      <div class="connect-box restore-box">
+        <h1>wirgloo</h1>
+        <p class="subtitle">Restoring session…</p>
+        <div class="restore-spinner"></div>
+        <button id="restore-cancel-btn" aria-label="Cancel restore and show connect form">Cancel — show connect form</button>
+      </div>
+    </main>
   </div>
 
   <script src="app.js"></script>
