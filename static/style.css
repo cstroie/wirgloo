@@ -249,7 +249,8 @@ html[data-font="large"]  { --font-size: 16px; }
   font-size: 1rem; padding: 4px 6px; border-radius: 6px;
   transition: color 0.15s, background 0.15s;
 }
-#settings-close-btn:hover { color: var(--text); background: var(--bg3); }
+#settings-close-btn       { color: color-mix(in srgb, var(--error) 55%, var(--text-dim)); }
+#settings-close-btn:hover { color: var(--error); background: rgba(248,113,113,0.1); }
 #settings-body { padding: 18px; display: flex; flex-direction: column; gap: 20px; }
 .settings-placeholder { color: var(--text-dim); font-size: 0.85rem; font-style: italic; }
 .settings-group { display: flex; flex-direction: column; gap: 8px; }
@@ -332,7 +333,7 @@ html[data-font="large"]  { --font-size: 16px; }
   text-align: left;
 }
 #sidebar-footer button:hover { color: var(--text); background: var(--bg3); }
-#sidebar-footer #disconnect-btn       { color: color-mix(in srgb, var(--error) 70%, var(--text-dim)); }
+#sidebar-footer #disconnect-btn       { color: color-mix(in srgb, var(--error) 55%, var(--text-dim)); }
 #sidebar-footer #disconnect-btn:hover { color: var(--error); background: rgba(248,113,113,0.1); }
 #sidebar-footer #list-btn  { color: var(--btn-info); }
 #sidebar-footer #join-btn  { color: var(--btn-ok);   }
