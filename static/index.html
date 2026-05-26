@@ -103,33 +103,33 @@
 
   <div id="panel-backdrop" class="hidden"></div>
   <div id="chat-screen" class="hidden">
-    <div id="sidebar">
-      <div id="sidebar-header">
+    <nav id="sidebar">
+      <header id="sidebar-header">
         <span id="conn-dot" class="conn-dot" title="Disconnected" aria-label="Connection status: disconnected"></span>
         <div class="header-btns">
           <button id="theme-btn" title="Toggle theme" aria-label="Toggle theme">☀</button>
           <button id="settings-btn" title="Settings" aria-label="Settings">⚙</button>
         </div>
-      </div>
+      </header>
       <div id="channel-list" role="list" aria-label="Channels"></div>
-      <div id="sidebar-footer">
+      <footer id="sidebar-footer">
         <button id="list-btn" aria-label="List channels">≡ List</button>
         <button id="join-btn" aria-label="Join channel">+ Join</button>
         <button id="away-btn" aria-label="Toggle away status">⏾ Away</button>
         <button id="nick-btn" title="Change nick" aria-label="Change nick">✎ Nick</button>
         <button id="disconnect-btn" aria-label="Disconnect from server">⏏ Disconnect</button>
-      </div>
+      </footer>
       <small id="sidebar-version" class="app-version"></small>
-    </div>
+    </nav>
 
-    <div id="main">
-      <div id="topic-bar">
+    <main id="main">
+      <header id="topic-bar">
         <button id="sidebar-toggle" class="panel-toggle" title="Channels" aria-label="Show channels sidebar">☰</button>
         <span id="target-name"></span>
         <span id="topic-text"></span>
         <button id="userlist-toggle" class="panel-toggle" title="Users" aria-label="Show users panel">◉</button>
-      </div>
-      <div id="list-sort-bar" class="hidden" role="group" aria-label="Sort and filter channels">
+      </header>
+      <div id="list-sort-bar" class="hidden" role="toolbar" aria-label="Sort and filter channels">
         <span class="sort-label">Sort by</span>
         <button class="sort-btn" data-sort="users" aria-label="Sort by users">Users ↓</button>
         <button class="sort-btn" data-sort="name" aria-label="Sort by name">Name</button>
@@ -138,20 +138,20 @@
       </div>
       <div id="messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
       <button id="scroll-bottom" aria-label="Scroll to bottom">↓</button>
-      <div id="input-bar">
+      <footer id="input-bar">
         <div id="input-wrap">
           <span id="my-nick" aria-label="Current nick"></span>
           <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
         </div>
         <button type="button" id="send-btn" aria-label="Send message">⏎ Send</button>
-      </div>
+      </footer>
 
-      <div id="settings-panel" role="complementary" aria-label="Settings">
-        <div id="settings-header">
+      <aside id="settings-panel" aria-label="Settings">
+        <header id="settings-header">
           <h2>Settings</h2>
           <button id="settings-close-btn" aria-label="Close settings">✕</button>
-        </div>
-        <div id="settings-body">
+        </header>
+        <section id="settings-body">
           <span class="settings-section">Appearance</span>
           <div class="settings-group">
             <span class="settings-label">Font size</span>
@@ -214,16 +214,16 @@
             <label class="settings-label" for="autoaway-mins">Auto-away (minutes, 0 = off)</label>
             <input type="number" id="autoaway-mins" class="settings-input" min="0" max="120" step="1" value="5">
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
+      </aside>
+    </main>
 
-    <div id="userlist-panel">
+    <aside id="userlist-panel">
       <h2 id="userlist-header">Users</h2>
       <div id="userlist" role="list" aria-label="Users in channel"></div>
-      <div id="userlist-footer" class="hidden"></div>
+      <footer id="userlist-footer" class="hidden"></footer>
       <div id="lag-display" role="status" aria-live="polite">ping: -- ms</div>
-    </div>
+    </aside>
   </div>
 
   <div id="restore-screen" class="hidden">
