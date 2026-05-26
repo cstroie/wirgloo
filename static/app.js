@@ -136,7 +136,31 @@ function updateLagDisplay(ms) {
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────
-let markdownEnabled = true;
+let markdownEnabled      = true;
+let highlightWords       = [];
+let notificationsEnabled = false;
+
+function applyNotificationSetting(enabled) {
+  notificationsEnabled = enabled;
+  document.querySelectorAll('[data-setting="notifications"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === (enabled ? 'on' : 'off'));
+  });
+} // extra words that trigger mention highlight
+
+function isMentioned(text) {
+  const lower = text.toLowerCase();
+  if (state.nick && lower.includes(state.nick.toLowerCase())) return true;
+  return highlightWords.some(w => {
+    const re = new RegExp(`(?<![\\w])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`, 'i');
+    return re.test(text);
+  });
+}
+
+function applyHighlightWords(raw) {
+  highlightWords = raw.split(',').map(w => w.trim()).filter(Boolean);
+  const input = document.getElementById('highlight-words');
+  if (input && document.activeElement !== input) input.value = raw;
+}
 
 function applyFontSize(size) {
   document.documentElement.setAttribute('data-font', size);
@@ -159,6 +183,13 @@ function applyMarkdownSetting(enabled) {
   applyMarkdownSetting(md !== 'off');
   const notif = localStorage.getItem('wirgloo:cfg:notifications');
   applyNotificationSetting(notif === 'on' && 'Notification' in window && Notification.permission === 'granted');
+  applyHighlightWords(localStorage.getItem('wirgloo:cfg:highlights') || '');
+  document.addEventListener('input', e => {
+    if (e.target.id === 'highlight-words') {
+      applyHighlightWords(e.target.value);
+      localStorage.setItem('wirgloo:cfg:highlights', e.target.value);
+    }
+  });
   document.addEventListener('click', e => {
     const btn = e.target.closest('[data-setting]');
     if (!btn) return;
@@ -825,7 +856,7 @@ function handle(msg) {
         send({ type: 'raw', line: `WHOIS ${msg.from}` });
       }
       const isMe = msg.text.startsWith('/me ');
-      const isMention = !isMe && msg.text.toLowerCase().includes(state.nick.toLowerCase());
+      const isMention = !isMe && isMentioned(msg.text);
       const cls  = isMe ? 'me' : (isMention ? 'mention' : '');
       appendMsg(target, { type: cls || 'msg', nick: msg.from, text: msg.text, ts: msg.ts });
       if (target !== state.active) bumpUnread(target, isMention, msg.from, msg.text);
@@ -1237,15 +1268,6 @@ function bumpUnread(target, mention, fromNick, text) {
 }
 
 // ── Browser notifications ─────────────────────────────────────────────────────
-let notificationsEnabled = false;
-
-function applyNotificationSetting(enabled) {
-  notificationsEnabled = enabled;
-  document.querySelectorAll('[data-setting="notifications"]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.value === (enabled ? 'on' : 'off'));
-  });
-}
-
 async function requestNotifyPermission() {
   if (!('Notification' in window)) return;
   if (Notification.permission === 'default') await Notification.requestPermission();
