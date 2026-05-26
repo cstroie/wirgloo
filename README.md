@@ -99,6 +99,8 @@ chmod +x wirgloo
 
 Replace `linux-amd64` with `linux-arm64`, `darwin-amd64`, `darwin-arm64`, or `windows-amd64.exe` as needed.
 
+Linux binaries are statically linked (`CGO_ENABLED=0`) — they run on any distro, including Alpine and other musl-based systems, with no glibc dependency.
+
 **Build from source** — requires Go 1.21+:
 
 ```sh
