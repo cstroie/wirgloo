@@ -481,6 +481,7 @@ html[data-font="large"]  { --font-size: 16px; }
   padding: 5px 10px 5px 10px; color: var(--text-dim); font-size: 0.83rem;
   border-radius: 5px; margin: 1px 6px; transition: background 0.1s, color 0.1s;
   cursor: default;
+  border-left: 2px solid transparent;
 }
 .user-item:hover { background: var(--bg3); color: var(--text); }
 .user-item.owner  { color: #e05c5c; }
