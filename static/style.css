@@ -253,7 +253,6 @@ html[data-font="large"]  { --font-size: 16px; }
 #settings-body { padding: 18px; display: flex; flex-direction: column; gap: 20px; }
 .settings-placeholder { color: var(--text-dim); font-size: 0.85rem; font-style: italic; }
 .settings-group { display: flex; flex-direction: column; gap: 8px; }
-.settings-group + .settings-group { margin-top: 8px; }
 .settings-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-head); }
 .settings-options { display: flex; gap: 6px; }
 .settings-option {
@@ -272,7 +271,7 @@ html[data-font="large"]  { --font-size: 16px; }
 }
 .settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
 .settings-input::placeholder { color: var(--text-dim); }
-.settings-section { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); padding-bottom: 2px; border-bottom: 1px solid var(--border); margin-bottom: -6px; }
+.settings-section { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); padding-bottom: 2px; border-bottom: 1px solid var(--border); margin-bottom: -6px; margin-top: 12px; }
 
 #channel-list { flex: 1; overflow-y: auto; padding: 6px 0; }
 
