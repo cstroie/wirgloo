@@ -388,10 +388,26 @@ function persistMsg(target, m) {
   if (!msgCache.has(k)) msgCache.set(k, []);
   const arr = msgCache.get(k);
   arr.push(m);
-  if (arr.length > logMax) arr.splice(0, arr.length - logMax);
+  const excess = arr.length - logMax;
+  if (excess > 0) arr.splice(0, excess);
   getDB().then(db => {
     const tx = db.transaction('messages', 'readwrite');
-    tx.objectStore('messages').add({ server: state.server, target, type: m.type, nick: m.nick, text: m.text, ts: m.ts });
+    const store = tx.objectStore('messages');
+    store.add({ server: state.server, target, type: m.type, nick: m.nick, text: m.text, ts: m.ts });
+    if (excess > 0) {
+      // delete the oldest `excess` records for this target from IndexedDB
+      const idx = store.index('by_target');
+      const range = IDBKeyRange.only([state.server, target]);
+      const req = idx.openCursor(range);
+      let toDelete = excess;
+      req.onsuccess = e => {
+        const cursor = e.target.result;
+        if (!cursor || toDelete <= 0) return;
+        cursor.delete();
+        toDelete--;
+        cursor.continue();
+      };
+    }
   }).catch(err => console.warn('IndexedDB write failed', err));
 }
 
