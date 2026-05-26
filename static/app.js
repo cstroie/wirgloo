@@ -246,6 +246,7 @@ function applyMarkdownSetting(enabled) {
       hideJoinPart = on;
       syncToggleBtns('hidejoinpart', on);
       localStorage.setItem('wirgloo:cfg:hidejoinpart', on ? 'on' : 'off');
+      messages.classList.toggle('hide-joins', on);
     } else if (s === 'entertosend') {
       enterToSend = on;
       syncToggleBtns('entertosend', on);
@@ -323,6 +324,7 @@ function setMyNick(nick) {
 const channelList   = $('channel-list');
 const messages      = $('messages');
 messages.classList.toggle('no-irc-colors', stripColors);
+messages.classList.toggle('hide-joins', hideJoinPart);
 const targetName    = $('target-name');
 const topicText     = $('topic-text');
 const input         = $('input');
@@ -1435,7 +1437,7 @@ function renderMessages(target) {
 
 function appendMsg(target, m) {
   if (m.nick && state.ignored.has(m.nick.toLowerCase())) return;
-  if (hideJoinPart && (m.type === 'join' || m.type === 'part' || m.type === 'quit')) return;
+
   const ch = state.channels.get(target);
   if (!ch) return;
   ch.messages.push(m);
