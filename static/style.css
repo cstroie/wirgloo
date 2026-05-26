@@ -481,14 +481,13 @@ html[data-font="large"]  { --font-size: 16px; }
   padding: 5px 10px 5px 10px; color: var(--text-dim); font-size: 0.83rem;
   border-radius: 5px; margin: 1px 6px; transition: background 0.1s, color 0.1s;
   cursor: default;
-  border-left: 2px solid transparent;
 }
 .user-item:hover { background: var(--bg3); color: var(--text); }
-.user-item.owner  { color: #e05c5c; border-left-color: #e05c5c; }
-.user-item.admin  { color: #e07c3a; border-left-color: #e07c3a; }
-.user-item.op     { color: var(--mention); border-left-color: var(--mention); }
-.user-item.halfop { color: #6abf69;  border-left-color: #6abf69; }
-.user-item.voice  { color: var(--notice); border-left-color: var(--notice); }
+.user-item.owner  { color: #e05c5c; }
+.user-item.admin  { color: #e07c3a; }
+.user-item.op     { color: var(--mention); }
+.user-item.halfop { color: #6abf69; }
+.user-item.voice  { color: var(--notice); }
 .user-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; display: flex; align-items: center; gap: 4px; }
 .user-prefix { font-weight: bold; flex-shrink: 0; min-width: 0.9em; opacity: 0.7; }
 .user-prefix-none { flex-shrink: 0; min-width: 0.9em; }
