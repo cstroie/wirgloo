@@ -139,13 +139,22 @@ function updateLagDisplay(ms) {
 let markdownEnabled      = true;
 let highlightWords       = [];
 let notificationsEnabled = false;
+let hideJoinPart         = false;
+let enterToSend          = true;
+let stripColors          = false;
+let autoAwayMins         = 5;
+let logMax               = 500;
 
 function applyNotificationSetting(enabled) {
   notificationsEnabled = enabled;
-  document.querySelectorAll('[data-setting="notifications"]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.value === (enabled ? 'on' : 'off'));
+  syncToggleBtns('notifications', enabled);
+}
+
+function syncToggleBtns(name, value) {
+  document.querySelectorAll(`[data-setting="${name}"]`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === (value ? 'on' : 'off'));
   });
-} // extra words that trigger mention highlight
+}
 
 function isMentioned(text) {
   const lower = text.toLowerCase();
@@ -177,36 +186,74 @@ function applyMarkdownSetting(enabled) {
 }
 
 (function initSettings() {
-  const font = localStorage.getItem('wirgloo:cfg:font') || 'medium';
-  applyFontSize(font);
-  const md = localStorage.getItem('wirgloo:cfg:markdown');
-  applyMarkdownSetting(md !== 'off');
-  const notif = localStorage.getItem('wirgloo:cfg:notifications');
-  applyNotificationSetting(notif === 'on' && 'Notification' in window && Notification.permission === 'granted');
+  applyFontSize(localStorage.getItem('wirgloo:cfg:font') || 'medium');
+  applyMarkdownSetting(localStorage.getItem('wirgloo:cfg:markdown') !== 'off');
+  applyNotificationSetting(
+    localStorage.getItem('wirgloo:cfg:notifications') === 'on' &&
+    'Notification' in window && Notification.permission === 'granted');
   applyHighlightWords(localStorage.getItem('wirgloo:cfg:highlights') || '');
+
+  hideJoinPart = localStorage.getItem('wirgloo:cfg:hidejoinpart') === 'on';
+  syncToggleBtns('hidejoinpart', hideJoinPart);
+
+  enterToSend = localStorage.getItem('wirgloo:cfg:entertosend') !== 'off';
+  syncToggleBtns('entertosend', enterToSend);
+
+  stripColors = localStorage.getItem('wirgloo:cfg:stripcolors') === 'on';
+  syncToggleBtns('stripcolors', stripColors);
+
+  const savedMins = parseInt(localStorage.getItem('wirgloo:cfg:autoaway'));
+  if (!isNaN(savedMins)) autoAwayMins = savedMins;
+  const awayInput = document.getElementById('autoaway-mins');
+  if (awayInput) awayInput.value = autoAwayMins;
+
+  const savedLog = parseInt(localStorage.getItem('wirgloo:cfg:logmax'));
+  if (!isNaN(savedLog)) logMax = savedLog;
+  const logInput = document.getElementById('log-max');
+  if (logInput) logInput.value = logMax;
+
   document.addEventListener('input', e => {
     if (e.target.id === 'highlight-words') {
       applyHighlightWords(e.target.value);
       localStorage.setItem('wirgloo:cfg:highlights', e.target.value);
+    } else if (e.target.id === 'autoaway-mins') {
+      const v = Math.max(0, Math.min(120, parseInt(e.target.value) || 0));
+      autoAwayMins = v;
+      localStorage.setItem('wirgloo:cfg:autoaway', v);
+      if (state.connected) resetAutoAway();
+    } else if (e.target.id === 'log-max') {
+      const v = Math.max(50, Math.min(5000, parseInt(e.target.value) || 500));
+      logMax = v;
+      localStorage.setItem('wirgloo:cfg:logmax', v);
     }
   });
+
   document.addEventListener('click', e => {
     const btn = e.target.closest('[data-setting]');
     if (!btn) return;
-    if (btn.dataset.setting === 'font') {
+    const on = btn.dataset.value === 'on';
+    const s = btn.dataset.setting;
+    if (s === 'font') {
       applyFontSize(btn.dataset.value);
       localStorage.setItem('wirgloo:cfg:font', btn.dataset.value);
-    } else if (btn.dataset.setting === 'markdown') {
-      const on = btn.dataset.value === 'on';
+    } else if (s === 'markdown') {
       applyMarkdownSetting(on);
       localStorage.setItem('wirgloo:cfg:markdown', on ? 'on' : 'off');
-    } else if (btn.dataset.setting === 'notifications') {
-      if (btn.dataset.value === 'on') {
-        requestNotifyPermission();
-      } else {
-        applyNotificationSetting(false);
-        localStorage.setItem('wirgloo:cfg:notifications', 'off');
-      }
+    } else if (s === 'notifications') {
+      if (on) requestNotifyPermission();
+      else { applyNotificationSetting(false); localStorage.setItem('wirgloo:cfg:notifications', 'off'); }
+    } else if (s === 'hidejoinpart') {
+      hideJoinPart = on;
+      syncToggleBtns('hidejoinpart', on);
+      localStorage.setItem('wirgloo:cfg:hidejoinpart', on ? 'on' : 'off');
+    } else if (s === 'entertosend') {
+      enterToSend = on;
+      syncToggleBtns('entertosend', on);
+      localStorage.setItem('wirgloo:cfg:entertosend', on ? 'on' : 'off');
+    } else if (s === 'stripcolors') {
+      stripColors = on;
+      syncToggleBtns('stripcolors', on);
+      localStorage.setItem('wirgloo:cfg:stripcolors', on ? 'on' : 'off');
     }
   });
 })();
@@ -323,7 +370,7 @@ async function preloadLogs(server) {
           if (!byTarget.has(k)) byTarget.set(k, []);
           byTarget.get(k).push({ type: row.type, nick: row.nick, text: row.text, ts: row.ts });
         }
-        for (const [k, msgs] of byTarget) msgCache.set(k, msgs.slice(-LOG_MAX));
+        for (const [k, msgs] of byTarget) msgCache.set(k, msgs.slice(-logMax));
         resolve();
       };
       req.onerror = e => reject(e.target.error);
@@ -337,7 +384,7 @@ function persistMsg(target, m) {
   if (!msgCache.has(k)) msgCache.set(k, []);
   const arr = msgCache.get(k);
   arr.push(m);
-  if (arr.length > LOG_MAX) arr.splice(0, arr.length - LOG_MAX);
+  if (arr.length > logMax) arr.splice(0, arr.length - logMax);
   getDB().then(db => {
     const tx = db.transaction('messages', 'readwrite');
     tx.objectStore('messages').add({ server: state.server, target, type: m.type, nick: m.nick, text: m.text, ts: m.ts });
@@ -1386,6 +1433,7 @@ function renderMessages(target) {
 
 function appendMsg(target, m) {
   if (m.nick && state.ignored.has(m.nick.toLowerCase())) return;
+  if (hideJoinPart && (m.type === 'join' || m.type === 'part' || m.type === 'quit')) return;
   const ch = state.channels.get(target);
   if (!ch) return;
   ch.messages.push(m);
@@ -1773,7 +1821,7 @@ $('userlist-toggle').addEventListener('click', () => {
 
 $('send-btn').addEventListener('click', sendInput);
 input.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { sendInput(); tabComplete.reset(); inputHistory.reset(); }
+  if (e.key === 'Enter' && (enterToSend || e.ctrlKey || e.metaKey)) { sendInput(); tabComplete.reset(); inputHistory.reset(); }
   else if (e.key === 'Tab') { e.preventDefault(); tabComplete.next(); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); inputHistory.prev(); tabComplete.reset(); }
   else if (e.key === 'ArrowDown') { e.preventDefault(); inputHistory.next(); tabComplete.reset(); }
@@ -2094,7 +2142,7 @@ $('disconnect-btn').addEventListener('click', () => {
 });
 
 // ── Auto-away ─────────────────────────────────────────────────────────────────
-const AUTO_AWAY_MS = 5 * 60 * 1000;
+const AUTO_AWAY_MS = () => autoAwayMins * 60 * 1000;
 const AUTO_AWAY_MSG = 'Auto-away';
 let autoAwayTimer = null;
 let autoAwayActive = false;
@@ -2105,14 +2153,14 @@ function resetAutoAway() {
     send({ type: 'raw', line: 'AWAY' });
   }
   clearTimeout(autoAwayTimer);
-  if (state.connected) {
+  if (state.connected && autoAwayMins > 0) {
     autoAwayTimer = setTimeout(() => {
       const inIdleChannel = [...state.channels.keys()].some(t => t.includes('idle'));
       if (!state.away && !inIdleChannel) {
         autoAwayActive = true;
         send({ type: 'raw', line: `AWAY :${AUTO_AWAY_MSG}` });
       }
-    }, AUTO_AWAY_MS);
+    }, AUTO_AWAY_MS());
   }
 }
 
@@ -2256,6 +2304,7 @@ function applyMarkdown(s) {
 }
 
 function renderText(raw, noMarkdown=false) {
+  if (stripColors) raw = raw.replace(/\x03\d{0,2}(,\d{0,2})?/g, '').replace(/[\x02\x11\x1d\x1e\x1f\x0f\x16]/g, '');
   const hasIRC = /[\x02\x03\x0f\x11\x1d\x1e\x1f]/.test(raw);
   let bold=false, italic=false, under=false, strike=false, mono=false;
   let fg=null, bg=null;
