@@ -105,10 +105,8 @@
   <div id="chat-screen" class="hidden">
     <div id="sidebar">
       <div id="sidebar-header">
-        <span id="my-nick" aria-label="Current nick"></span>
         <div class="header-btns">
           <button id="theme-btn" title="Toggle theme" aria-label="Toggle theme">☀</button>
-          <button id="nick-btn" title="Change nick" aria-label="Change nick">✎</button>
         </div>
       </div>
       <div id="channel-list" role="list" aria-label="Channels"></div>
@@ -116,6 +114,7 @@
         <button id="list-btn" aria-label="List channels">≡ List</button>
         <button id="join-btn" aria-label="Join channel">+ Join</button>
         <button id="away-btn" aria-label="Toggle away status">⏾ Away</button>
+        <button id="nick-btn" title="Change nick" aria-label="Change nick">✎ Nick</button>
         <button id="disconnect-btn">Disconnect</button>
       </div>
       <small id="sidebar-version" class="app-version"></small>
@@ -138,7 +137,10 @@
       <div id="messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
       <button id="scroll-bottom" aria-label="Scroll to bottom">↓</button>
       <div id="input-bar">
-        <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
+        <div id="input-wrap">
+          <span id="my-nick" aria-label="Current nick"></span>
+          <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
+        </div>
         <button type="button" id="send-btn">Send</button>
       </div>
     </div>

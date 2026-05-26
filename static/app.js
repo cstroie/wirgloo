@@ -147,11 +147,21 @@ function updateThemeBtn() {
   if (light_meta) light_meta.content = light ? '#f1f2f6' : '#13141a';
 }
 
+function recomputeNickColors() {
+  if (state.nick) setMyNick(state.nick);
+  document.querySelectorAll('[data-nick]').forEach(el => {
+    const c = nickColor(el.dataset.nick);
+    el.style.color = c || '';
+  });
+  if (typeof renderUserlist === 'function') renderUserlist();
+}
+
 function toggleTheme() {
   const next = isLightTheme() ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('wirgloo:theme', next);
   updateThemeBtn();
+  recomputeNickColors();
 }
 
 (function initTheme() {
@@ -172,6 +182,10 @@ const chatScreen     = $('chat-screen');
 const connectForm   = $('connect-form');
 const connectError  = $('connect-error');
 const myNick        = $('my-nick');
+function setMyNick(nick) {
+  myNick.textContent = nick;
+  myNick.style.color = nickColor(nick) || '';
+}
 const channelList   = $('channel-list');
 const messages      = $('messages');
 const targetName    = $('target-name');
@@ -533,7 +547,7 @@ connectForm.addEventListener('submit', e => {
     renderChannelList();
   }
   setActive('*server*');
-  myNick.textContent = nick;
+  setMyNick(nick);
   appendMsg('*server*', { type: 'connecting', nick: '--', text: `Connecting to ${server}:${port}…` });
   openWS(server, port, nick, realname, tls, noverify, authMethod, pass);
 });
@@ -645,7 +659,7 @@ function handle(msg) {
       restoreScreen.classList.add('hidden');
       history.replaceState(null, '', '?s=' + msg.session);
       reconnectDelay = 1000;
-      myNick.textContent = msg.nick;
+      setMyNick(msg.nick);
       state.serverMeta = {};
       updateLagDisplay(null);
       scheduleLagPing(3000); // initial measurement ~3 s after connect
@@ -688,7 +702,7 @@ function handle(msg) {
       reconnectDelay = 1000;
       state.nick = msg.nick;
       state.server = msg.server || '';
-      myNick.textContent = msg.nick;
+      setMyNick(msg.nick);
       ensureChannel('*server*');
       updateLagDisplay(null);
       scheduleLagPing(3000);
@@ -854,7 +868,7 @@ function handle(msg) {
     case 'nick':
       if (msg.old === state.nick) {
         state.nick = msg.new;
-        myNick.textContent = msg.new;
+        setMyNick(msg.new);
       }
       state.channels.forEach((ch, target) => {
         if (ch.nicks.has(msg.old)) {
@@ -1341,8 +1355,8 @@ function buildMsgEl(m, target, grouped = false) {
     el.innerHTML = `
       <span class="ts">${ts}</span>
       <span class="body">
-        <span class="nick-col action-star" style="${nc ? `color:${nc}` : ''}">*</span>
-        <span class="action-text" style="${nc ? `color:${nc}` : ''}"><b class="nick-link" data-nick="${escHtml(m.nick || '')}">${escHtml(m.nick || '')}</b> ${highlightNicks(renderText(action), state.channels.get(state.active)?.nicks)}</span>
+        <span class="nick-col action-star" data-nick="${escHtml(m.nick || '')}" style="${nc ? `color:${nc}` : ''}">*</span>
+        <span class="action-text" data-nick="${escHtml(m.nick || '')}" style="${nc ? `color:${nc}` : ''}"><b class="nick-link" data-nick="${escHtml(m.nick || '')}">${escHtml(m.nick || '')}</b> ${highlightNicks(renderText(action), state.channels.get(state.active)?.nicks)}</span>
       </span>`;
     return el;
   }
@@ -1463,7 +1477,7 @@ function renderUserlist() {
       <div class="dm-avatar" style="background:${nc || 'var(--accent)'}">
         ${w?.bot ? '🤖' : escHtml(nick[0].toUpperCase())}
       </div>
-      <div class="dm-nick" style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</div>
+      <div class="dm-nick" data-nick="${escHtml(nick)}" style="${nc ? `color:${nc}` : ''}">${escHtml(nick)}</div>
       ${badges.length ? `<div class="dm-badges">${badges.join('')}</div>` : ''}`;
 
     if (w && (w.realname || w.host || w.server || w.idleSecs || w.channels.length)) {
@@ -2076,8 +2090,8 @@ function nickHue(nick) {
 function nickColor(nick) {
   const hue = nickHue(nick);
   if (hue === null) return '';
-  const light = isLightTheme() ? '38%' : '68%';
-  return `hsl(${hue},65%,${light})`;
+  const l = isLightTheme() ? 0.38 : 0.78;
+  return `oklch(${l} 0.13 ${hue})`;
 }
 
 function fmtTime(unix) {
