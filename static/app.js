@@ -225,6 +225,7 @@ function applyMarkdownSetting(enabled) {
       const v = Math.max(50, Math.min(5000, parseInt(e.target.value) || 500));
       logMax = v;
       localStorage.setItem('wirgloo:cfg:logmax', v);
+      trimAllCaches();
     }
   });
 
@@ -409,6 +410,28 @@ function persistMsg(target, m) {
       };
     }
   }).catch(err => console.warn('IndexedDB write failed', err));
+}
+
+function trimAllCaches() {
+  getDB().then(db => {
+    msgCache.forEach((arr, k) => {
+      const excess = arr.length - logMax;
+      if (excess <= 0) return;
+      const [server, target] = k.split('\x00');
+      arr.splice(0, excess);
+      const tx = db.transaction('messages', 'readwrite');
+      const idx = tx.objectStore('messages').index('by_target');
+      const req = idx.openCursor(IDBKeyRange.only([server, target]));
+      let toDelete = excess;
+      req.onsuccess = e => {
+        const cursor = e.target.result;
+        if (!cursor || toDelete <= 0) return;
+        cursor.delete();
+        toDelete--;
+        cursor.continue();
+      };
+    });
+  }).catch(err => console.warn('IndexedDB trim failed', err));
 }
 
 function loadLog(server, target) {
