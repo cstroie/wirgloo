@@ -254,6 +254,7 @@ function applyMarkdownSetting(enabled) {
       stripColors = on;
       syncToggleBtns('stripcolors', on);
       localStorage.setItem('wirgloo:cfg:stripcolors', on ? 'on' : 'off');
+      messages.classList.toggle('no-irc-colors', on);
     }
   });
 })();
@@ -321,6 +322,7 @@ function setMyNick(nick) {
 }
 const channelList   = $('channel-list');
 const messages      = $('messages');
+messages.classList.toggle('no-irc-colors', stripColors);
 const targetName    = $('target-name');
 const topicText     = $('topic-text');
 const input         = $('input');
@@ -2304,7 +2306,6 @@ function applyMarkdown(s) {
 }
 
 function renderText(raw, noMarkdown=false) {
-  if (stripColors) raw = raw.replace(/\x03\d{0,2}(,\d{0,2})?/g, '').replace(/[\x02\x11\x1d\x1e\x1f\x0f\x16]/g, '');
   const hasIRC = /[\x02\x03\x0f\x11\x1d\x1e\x1f]/.test(raw);
   let bold=false, italic=false, under=false, strike=false, mono=false;
   let fg=null, bg=null;

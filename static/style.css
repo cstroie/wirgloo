@@ -742,3 +742,11 @@ html[data-font="large"]  { --font-size: 16px; }
   /* narrower bubbles on small screens */
   .msg .text { max-width: 88%; }
 }
+
+#messages.no-irc-colors span[style*="color"],
+#messages.no-irc-colors span[style*="background"] {
+  color: inherit !important;
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
