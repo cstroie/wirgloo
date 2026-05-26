@@ -40,7 +40,7 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 **Connectivity**
 - TLS and plain IRC, optional certificate verification bypass (for self-signed certs)
 - Predefined network presets: Libera.Chat, OFTC, Rizon, EFnet, QuakeNet, DALnet, Undernet, IRCnet, GeekShed, RadioChat, SDF
-- Custom server profiles saved to browser localStorage
+- Custom server profiles saved to browser localStorage; network name (from server 005) stored after first connect and shown in the dropdown
 - WebSocket reconnection with exponential backoff — IRC session survives brief network drops
 - Transparent reconnect after server restart: channels re-joined, messages preserved
 - Offline channel placeholders in the sidebar — click to rejoin
@@ -55,7 +55,7 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - IRC formatting codes (bold, italic, underline, colour, monospace)
 - Markdown-lite rendering (headings, bold, italic, strikethrough, inline code)
 - Nick mentions highlighted in their assigned colour
-- Chat log persisted per server/channel in localStorage, replayed on reconnect with a session-break marker
+- Chat log persisted per server/channel in IndexedDB (up to `logMax` messages, default 500), replayed on reconnect with a session-break marker
 - Join/part/quit/kick events with directional arrows (`→` / `←`)
 
 **User list**
@@ -190,12 +190,14 @@ The profile is saved to localStorage on load. A `?s=` session-restore parameter 
 ## Project layout
 
 ```
-main.go      entry point, HTTP server, flag parsing
-ws/          WebSocket handler and message dispatch
-session/     session registry, IRC↔WS bridge, rate limiter, SASL
-irc/         IRC dial, handshake, line reader/parser
-logger/      structured logger setup
-static/      browser UI (HTML, CSS, JS — no build step)
+cmd/wirgloo/   Go server (package main)
+  main.go        entry point, flag parsing, HTTP routes
+  handler.go     WebSocket upgrade, JSON frame dispatch
+  session.go     session registry, IRC↔WS bridge, rate limiter, SASL
+  client.go      IRC dial, handshake, line reader/parser
+  logger.go      structured logger setup
+embed.go       exports static/  as embed.FS (root package)
+static/        browser UI — HTML, CSS, single-file JS (no build step)
 ```
 
 ## Dependencies
