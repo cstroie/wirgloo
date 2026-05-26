@@ -1530,6 +1530,8 @@ function updateDMTopic(nick) {
 }
 
 function openDM(nick, fromChannel) {
+  const existing = state.channels.get(chanKey(nick));
+  if (existing && !existing.offline && !fromChannel) { setActive(nick); return; }
   ensureChannel(nick);
   const dmCh = state.channels.get(chanKey(nick));
   if (dmCh) dmCh.offline = false;
@@ -1935,6 +1937,8 @@ function handleCommand(raw) {
     case 'JOIN': {
       const [jchan, jkey] = arg.split(/\s+/, 2);
       const jchanKey = chanKey(jchan);
+      const existing = state.channels.get(jchanKey);
+      if (existing && !existing.offline) { setActive(jchanKey); break; }
       send({ type: 'join', channel: jchan, ...(jkey ? { key: jkey } : {}) });
       // pre-seed key so auto-rejoin can use it before MODE arrives
       if (jkey) { ensureChannel(jchanKey); state.channels.get(jchanKey).key = jkey; }
@@ -2124,7 +2128,11 @@ $('list-btn').addEventListener('click', () => {
 $('join-btn').addEventListener('click', () => {
   openPanel(null);
   const ch = prompt('Channel to join:');
-  if (ch) send({ type: 'join', channel: chanKey(ch.startsWith('#') ? ch : '#' + ch) });
+  if (!ch) return;
+  const key = chanKey(ch.startsWith('#') ? ch : '#' + ch);
+  const existing = state.channels.get(key);
+  if (existing && !existing.offline) { setActive(key); return; }
+  send({ type: 'join', channel: key });
 });
 
 $('nick-btn').addEventListener('click', () => {
