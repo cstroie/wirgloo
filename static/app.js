@@ -491,6 +491,14 @@ function saveProfile(profile) {
 
 function profileKey(p) { return `saved:${p.server}:${p.port}`; }
 
+function updateProfileNetworkName(server, port, networkName) {
+  const profiles = loadProfiles();
+  const p = profiles.find(p => p.server === server && p.port === port);
+  if (!p || p.networkName === networkName) return;
+  p.networkName = networkName;
+  localStorage.setItem('wirgloo:profiles', JSON.stringify(profiles));
+}
+
 function renderSavedProfiles() {
   const sel = $('network');
   const existing = sel.querySelector('optgroup[label="Saved"]');
@@ -502,7 +510,7 @@ function renderSavedProfiles() {
   profiles.forEach(p => {
     const opt = document.createElement('option');
     opt.value = profileKey(p);
-    opt.textContent = `${p.server}:${p.port}${p.tls ? ' (TLS)' : ''}`;
+    opt.textContent = p.networkName ? `${p.networkName} (${p.server})` : `${p.server}:${p.port}${p.tls ? ' (TLS)' : ''}`;
     group.appendChild(opt);
   });
   sel.insertBefore(group, sel.querySelector('option[value="custom"]'));
@@ -816,6 +824,7 @@ function handle(msg) {
 
     case 'isupport_network':
       state.network = msg.value;
+      if (state.connectParams) updateProfileNetworkName(state.connectParams.server, state.connectParams.port, msg.value);
       applyServerMeta(state.network, state.servername, null);
       renderChannelList();
       updateTitle();
