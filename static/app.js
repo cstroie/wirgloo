@@ -1678,7 +1678,7 @@ function renderUserlist() {
       `<div class="userlist-footer-sep"></div>` +
       `<button id="whois-btn">ℹ Info</button>` +
       `<button id="ping-btn">↔ Ping</button>` +
-      `<button id="version-btn">📋 Version</button>` +
+      `<button id="version-btn">© Version</button>` +
       `<button id="close-dm-btn" class="danger">✕ Close</button>`;
     footer.classList.remove('hidden');
     footer.querySelector('#whois-btn').addEventListener('click', () => {
