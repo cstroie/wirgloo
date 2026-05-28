@@ -229,7 +229,7 @@ html[data-font="large"]  { --font-size: 16px; }
   background: var(--bg2);
   box-shadow: var(--panel-shadow);
   display: flex; flex-direction: column; flex-shrink: 0;
-  z-index: 1;
+  z-index: 10;
 }
 
 #sidebar-header {
@@ -255,13 +255,13 @@ html[data-font="large"]  { --font-size: 16px; }
 .conn-dot.error      { background: var(--error); opacity: 1; box-shadow: 0 0 6px rgba(248,113,113,0.5); }
 
 #settings-panel {
-  position: absolute; inset: 0; z-index: 50;
+  position: absolute; top: 0; right: 0; bottom: 0; width: clamp(220px, 33%, 360px); z-index: 2;
   background: var(--bg);
   display: flex; flex-direction: column;
   overflow-y: auto;
   transform: translateX(100%);
   transition: transform 0.25s ease;
-  box-shadow: var(--main-shadow);
+  box-shadow: 0px 0px 16px 4px rgba(0,0,0,0.18);
 }
 #settings-panel.open { transform: translateX(0); }
 
@@ -371,6 +371,7 @@ html[data-font="large"]  { --font-size: 16px; }
   display: flex; align-items: center; gap: 12px;
   height: var(--header-h); padding: 0 18px;
   background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0;
+  position: relative; z-index: 4;
 }
 #target-name {
   color: var(--accent); font-weight: bold; white-space: nowrap;
@@ -442,6 +443,7 @@ html[data-font="large"]  { --font-size: 16px; }
 #input-bar {
   display: flex; gap: 8px; padding: 12px 16px;
   background: var(--bg2); border-top: 1px solid var(--border);
+  position: relative; z-index: 4;
 }
 #input-wrap {
   flex: 1; display: flex; align-items: center;
@@ -481,7 +483,7 @@ html[data-font="large"]  { --font-size: 16px; }
   transition: width 0.15s;
   box-shadow: var(--panel-shadow-left);
   display: flex; flex-direction: column; flex-shrink: 0;
-  z-index: 1;
+  z-index: 10;
 }
 #userlist-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -624,7 +626,7 @@ html[data-font="large"]  { --font-size: 16px; }
 #list-sort-bar {
   display: flex; align-items: center; gap: 6px;
   padding: 6px 18px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  flex-shrink: 0; position: relative; z-index: 3;
 }
 #list-filter {
   margin-left: auto; background: var(--bg3); border: 1px solid var(--border);
@@ -669,7 +671,7 @@ html[data-font="large"]  { --font-size: 16px; }
 @media (max-width: 800px) {
   #scroll-bottom {
     display: flex; align-items: center; justify-content: center;
-    position: fixed; z-index: 50;
+    position: fixed; z-index: 1;
     bottom: 72px; left: 50%; transform: translateX(-50%);
     width: 48px; height: 48px; border-radius: 50%;
     background: var(--accent); color: #fff; border: none;
