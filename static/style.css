@@ -1,4 +1,5 @@
 :root {
+  --bg0:       #0c0d11;
   --bg:        #13141a;
   --bg2:       #1a1b24;
   --bg3:       #22232e;
@@ -33,9 +34,11 @@
   --header-h:  48px;
   --panel-shadow:       2px 0 16px rgba(0,0,0,0.35);
   --panel-shadow-left: -2px 0 16px rgba(0,0,0,0.35);
+  --main-shadow:        inset 1px 0px 6px 0px rgba(0, 0, 0, 0.18);
 }
 
 :root[data-theme="light"] {
+  --bg0:       #e2e3ec;
   --bg:        #f1f2f6;
   --bg2:       #e4e5ee;
   --bg3:       #d5d6e3;
@@ -199,6 +202,28 @@ html[data-font="large"]  { --font-size: 16px; }
 /* ── Chat screen ────────────────────────────────────── */
 #chat-screen { display: flex; height: 100%; overflow: hidden; }
 
+:root[data-layout="contained"] #chat-screen {
+  max-width: 100%;
+  margin: 0 auto;
+  box-shadow: 0px 0px 16px 0px rgba(0, 0, 0, 0.18);
+}
+@media (min-width: 576px)  { :root[data-layout="contained"] #chat-screen { max-width: 510px;  } }
+@media (min-width: 768px)  { :root[data-layout="contained"] #chat-screen { max-width: 700px;  } }
+@media (min-width: 1024px) { :root[data-layout="contained"] #chat-screen { max-width: 950px;  } }
+@media (min-width: 1280px) { :root[data-layout="contained"] #chat-screen { max-width: 1200px; } }
+@media (min-width: 1536px) { :root[data-layout="contained"] #chat-screen { max-width: 1450px; } }
+
+:root[data-layout="contained"] body { background: var(--bg0); }
+
+:root[data-layout="contained"] #sidebar {
+  background: var(--bg3);
+  border-left: 1px solid var(--border);
+}
+:root[data-layout="contained"] #userlist-panel {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+}
+
 #sidebar {
   width: var(--sidebar-w);
   background: var(--bg2);
@@ -236,23 +261,10 @@ html[data-font="large"]  { --font-size: 16px; }
   overflow-y: auto;
   transform: translateX(100%);
   transition: transform 0.25s ease;
-  box-shadow: inset 3px 0 10px rgba(0,0,0,0.18);
+  box-shadow: var(--main-shadow);
 }
 #settings-panel.open { transform: translateX(0); }
-#settings-header {
-  display: flex; align-items: center; justify-content: space-between;
-  height: var(--header-h); padding: 0 18px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
-#settings-header h2 { font-size: 0.85rem; color: var(--text-head); text-transform: uppercase; letter-spacing: 1px; }
-#settings-close-btn {
-  background: none; border: none; color: var(--text-dim); cursor: pointer;
-  font-size: 1rem; padding: 4px 6px; border-radius: 6px;
-  transition: color 0.15s, background 0.15s;
-}
-#settings-close-btn       { color: color-mix(in srgb, var(--error) 55%, var(--text-dim)); }
-#settings-close-btn:hover { color: var(--error); background: rgba(248,113,113,0.1); }
+
 #settings-body { padding: 18px; display: flex; flex-direction: column; gap: 20px; }
 .settings-placeholder { color: var(--text-dim); font-size: 0.85rem; font-style: italic; }
 .settings-group { display: flex; flex-direction: column; gap: 8px; }
@@ -348,6 +360,10 @@ html[data-font="large"]  { --font-size: 16px; }
 
 #main {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+}
+
+#messages-wrap {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
   position: relative;
 }
 
@@ -375,7 +391,8 @@ html[data-font="large"]  { --font-size: 16px; }
 
 #messages {
   flex: 1; overflow-y: auto; display: flex; flex-direction: column;
-  scroll-behavior: smooth;
+  background: var(--bg); scroll-behavior: smooth;
+  box-shadow: var(--main-shadow);
 }
 
 /* ── Messages — classic IRC layout (desktop) ─────── */
@@ -462,7 +479,7 @@ html[data-font="large"]  { --font-size: 16px; }
 #userlist-panel {
   width: var(--users-w); background: var(--bg);
   transition: width 0.15s;
-  box-shadow: var(--panel-shadow-left), inset 3px 0 10px rgba(0,0,0,0.18);
+  box-shadow: var(--panel-shadow-left);
   display: flex; flex-direction: column; flex-shrink: 0;
   z-index: 1;
 }

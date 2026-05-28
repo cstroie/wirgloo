@@ -140,23 +140,19 @@
         <button class="sort-btn" data-sort="topic" aria-label="Sort by topic">Topic</button>
         <input type="search" id="list-filter" placeholder="Filter channels…" autocomplete="off" spellcheck="false" aria-label="Filter channels">
       </div>
-      <div id="messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
-      <button id="scroll-bottom" aria-label="Scroll to bottom">↓</button>
-      <footer id="input-bar">
-        <div id="input-wrap">
-          <span id="my-nick" aria-label="Current nick"></span>
-          <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
-        </div>
-        <button type="button" id="send-btn" aria-label="Send message">⏎ Send</button>
-      </footer>
-
-      <aside id="settings-panel" aria-label="Settings">
-        <header id="settings-header">
-          <h2>Settings</h2>
-          <button id="settings-close-btn" aria-label="Close settings">✕</button>
-        </header>
-        <section id="settings-body">
-          <span class="settings-section">Appearance</span>
+      <div id="messages-wrap">
+        <div id="messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
+        <button id="scroll-bottom" aria-label="Scroll to bottom">↓</button>
+        <aside id="settings-panel" aria-label="Settings">
+          <section id="settings-body">
+            <span class="settings-section">Appearance</span>
+          <div class="settings-group">
+            <span class="settings-label">Layout</span>
+            <div class="settings-options">
+              <button class="settings-option" data-setting="layout" data-value="fluid">Full width</button>
+              <button class="settings-option" data-setting="layout" data-value="contained">Contained</button>
+            </div>
+          </div>
           <div class="settings-group">
             <span class="settings-label">Font size</span>
             <div class="settings-options">
@@ -218,8 +214,16 @@
             <label class="settings-label" for="autoaway-mins">Auto-away (minutes, 0 = off)</label>
             <input type="number" id="autoaway-mins" class="settings-input" min="0" max="120" step="1" value="5">
           </div>
-        </section>
-      </aside>
+          </section>
+        </aside>
+      </div>
+      <footer id="input-bar">
+        <div id="input-wrap">
+          <span id="my-nick" aria-label="Current nick"></span>
+          <input type="text" id="input" placeholder="Message or /command" autocomplete="off" spellcheck="false" aria-label="Message input">
+        </div>
+        <button type="button" id="send-btn" aria-label="Send message">⏎ Send</button>
+      </footer>
     </main>
 
     <aside id="userlist-panel">

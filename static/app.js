@@ -178,6 +178,13 @@ function applyFontSize(size) {
   });
 }
 
+function applyLayout(value) {
+  document.documentElement.setAttribute('data-layout', value);
+  document.querySelectorAll('[data-setting="layout"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+}
+
 function applyMarkdownSetting(enabled) {
   markdownEnabled = enabled;
   document.querySelectorAll('[data-setting="markdown"]').forEach(btn => {
@@ -186,6 +193,7 @@ function applyMarkdownSetting(enabled) {
 }
 
 (function initSettings() {
+  applyLayout(localStorage.getItem('wirgloo:cfg:layout') || 'fluid');
   applyFontSize(localStorage.getItem('wirgloo:cfg:font') || 'medium');
   applyMarkdownSetting(localStorage.getItem('wirgloo:cfg:markdown') !== 'off');
   applyNotificationSetting(
@@ -234,7 +242,10 @@ function applyMarkdownSetting(enabled) {
     if (!btn) return;
     const on = btn.dataset.value === 'on';
     const s = btn.dataset.setting;
-    if (s === 'font') {
+    if (s === 'layout') {
+      applyLayout(btn.dataset.value);
+      localStorage.setItem('wirgloo:cfg:layout', btn.dataset.value);
+    } else if (s === 'font') {
       applyFontSize(btn.dataset.value);
       localStorage.setItem('wirgloo:cfg:font', btn.dataset.value);
     } else if (s === 'markdown') {
@@ -1814,7 +1825,6 @@ $('settings-btn').addEventListener('click', () => {
   const isOpen = $('settings-panel').classList.contains('open');
   openPanel(isOpen ? null : 'settings');
 });
-$('settings-close-btn').addEventListener('click', () => openPanel(null));
 messages.addEventListener('click', e => {
   openPanel(null);
   const nl = e.target.closest('.nick-link');
