@@ -59,11 +59,11 @@ function rotateSuggestion() {
   $('nick').value = nick;
   $('realname').value = real;
   $('realname').dataset.suggested = '1';
-  try { localStorage.setItem('wirgloo:nick', JSON.stringify({ nick, realname: real, offset: _nickOffset })); } catch {}
+  try { localStorage.setItem('wirgloo:cfg:nick', JSON.stringify({ nick, realname: real, offset: _nickOffset })); } catch {}
 }
 
 function loadDefaultNick() {
-  try { return JSON.parse(localStorage.getItem('wirgloo:nick') || 'null'); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem('wirgloo:cfg:nick') || 'null'); } catch { return null; }
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
