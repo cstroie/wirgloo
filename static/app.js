@@ -2318,6 +2318,8 @@ function nickHue(nick) {
 }
 
 function nickColor(nick) {
+  if (document.documentElement.dataset.palette === 'retro')
+    return isLightTheme() ? '#0000aa' : '#00aa00';
   const hue = nickHue(nick);
   if (hue === null) return '';
   const l = isLightTheme() ? 0.38 : 0.78;
