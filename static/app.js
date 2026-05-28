@@ -569,7 +569,7 @@ $('delete-profile-btn').addEventListener('click', () => {
 // ── Per-server settings ───────────────────────────────────────────────────────
 // Each server's settings are stored in one key: wirgloo:srv:<server>
 // Global keys: wirgloo:profiles
-// Last connection (form pre-fill only): wirgloo:srv:last → {server, network, tls}
+// Last connection (form pre-fill only): wirgloo:cfg:server → {server, network, tls}
 
 function srvKey(server) { return `wirgloo:srv:${server}`; }
 
@@ -654,7 +654,7 @@ async function restoreChannelsWithHistory(server) {
   renderSavedProfiles();
   // pre-fill form from the last connection
   let tabSession = null;
-  try { tabSession = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null'); } catch {}
+  try { tabSession = JSON.parse(localStorage.getItem('wirgloo:cfg:server') || 'null'); } catch {}
   const lastServer = tabSession?.server || null;
   const lastNet    = tabSession?.network || null;
   if (lastServer) {
@@ -735,7 +735,7 @@ connectForm.addEventListener('submit', e => {
     renderSavedProfiles();
   }
   state.server = server;
-  try { localStorage.setItem('wirgloo:srv:last', JSON.stringify({ server, network: netVal, tls })); } catch {}
+  try { localStorage.setItem('wirgloo:cfg:server', JSON.stringify({ server, network: netVal, tls })); } catch {}
   state.connectParams = { server, port, nick, realname, tls, noverify, authMethod, pass };
   connectError.classList.add('hidden');
   connectScreen.classList.add('hidden');
@@ -1279,7 +1279,7 @@ function updateTargetName(target) {
               : target === '*list*'   ? `Channels${state.listTotal ? ' (' + state.listTotal + ')' : ''}`
               : target;
   let tls = state.connectParams?.tls;
-  if (tls === undefined) { try { tls = JSON.parse(localStorage.getItem('wirgloo:srv:last') || 'null')?.tls; } catch {} }
+  if (tls === undefined) { try { tls = JSON.parse(localStorage.getItem('wirgloo:cfg:server') || 'null')?.tls; } catch {} }
   const lock = target === '*server*' ? (tls ? '🔒 ' : '🔓 ') : '';
   targetName.textContent = lock + label;
 }
