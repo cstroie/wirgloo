@@ -181,7 +181,6 @@ function applyPalette(palette) {
   document.documentElement.setAttribute('data-palette', palette);
   const sel = document.getElementById('palette-select');
   if (sel) sel.value = palette;
-  recomputeNickColors();
 }
 
 function applyLayout(value) {
@@ -229,6 +228,7 @@ function applyMarkdownSetting(enabled) {
     if (e.target.id === 'palette-select') {
       applyPalette(e.target.value);
       localStorage.setItem('wirgloo:cfg:palette', e.target.value);
+      recomputeNickColors();
     } else if (e.target.id === 'highlight-words') {
       applyHighlightWords(e.target.value);
       localStorage.setItem('wirgloo:cfg:highlights', e.target.value);
