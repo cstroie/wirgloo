@@ -7,6 +7,7 @@
   --accent:    #5952e8;
   --accent2:   #4f46e5;
   --accent-bg: rgba(89,82,232,0.12);
+  --accent-fg: #fff;
   --text:      #dde1f0;
   --text-dim:  #8892a4;
   --text-head: #9ca3af;
@@ -184,6 +185,7 @@
 
 /* ── VGA ─────────────────────────────────────────────── */
 :root[data-palette="retro"][data-theme="dark"] {
+  --accent-fg: #000;
   --bg0:       #000000;
   --bg:        #000000;
   --bg2:       #080808;
@@ -250,6 +252,7 @@
 
 /* ── Material ────────────────────────────────────────── */
 :root[data-palette="material"][data-theme="dark"] {
+  --accent-fg: #263238;
   --bg0:       #1a2327;
   --bg:        #263238;
   --bg2:       #2e3c43;
@@ -418,6 +421,7 @@
 
 /* ── Catppuccin Mocha / Latte ────────────────────────── */
 :root[data-palette="catppuccin"][data-theme="dark"] {
+  --accent-fg: #11111b;
   --bg0:       #11111b;
   --bg:        #1e1e2e;
   --bg2:       #24273a;
@@ -474,6 +478,7 @@
 
 /* ── Dracula ─────────────────────────────────────────── */
 :root[data-palette="dracula"][data-theme="dark"] {
+  --accent-fg: #191a21;
   --bg0:       #191a21;
   --bg:        #282a36;
   --bg2:       #2d2f3f;
@@ -530,6 +535,7 @@
 
 /* ── Gruvbox ─────────────────────────────────────────── */
 :root[data-palette="gruvbox"][data-theme="dark"] {
+  --accent-fg: #1d2021;
   --bg0:       #1d2021;
   --bg:        #282828;
   --bg2:       #3c3836;
@@ -557,6 +563,7 @@
   --panel-shadow-left: -2px 0 16px rgba(0,0,0,0.45);
 }
 :root[data-palette="gruvbox"][data-theme="light"] {
+  --accent-fg: #1d2021;
   --bg0:       #d5c4a1;
   --bg:        #fbf1c7;
   --bg2:       #f2e5bc;
@@ -586,6 +593,7 @@
 
 /* ── Nord ────────────────────────────────────────────── */
 :root[data-palette="nord"][data-theme="dark"] {
+  --accent-fg: #2e3440;
   --bg0:       #191d24;
   --bg:        #2e3440;
   --bg2:       #3b4252;
@@ -613,6 +621,7 @@
   --panel-shadow-left: -2px 0 16px rgba(0,0,0,0.4);
 }
 :root[data-palette="nord"][data-theme="light"] {
+  --accent-fg: #2e3440;
   --bg0:       #d8dee9;
   --bg:        #eceff4;
   --bg2:       #e5e9f0;
@@ -642,6 +651,7 @@
 
 /* ── One Dark / One Light ────────────────────────────── */
 :root[data-palette="one"][data-theme="dark"] {
+  --accent-fg: #1a1d23;
   --bg0:       #1a1d23;
   --bg:        #282c34;
   --bg2:       #2c313c;
@@ -812,7 +822,7 @@ html[data-font="large"]  { --font-size: 16px; }
 .connect-box button[type=submit], .connect-box #connect-btn {
   width: 100%; margin-top: 10px; padding: 10px;
   background: var(--accent); border: none; border-radius: var(--radius);
-  color: #fff; font-family: var(--font-mono); font-size: 0.95rem; cursor: pointer;
+  color: var(--accent-fg); font-family: var(--font-mono); font-size: 0.95rem; cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
   box-shadow: 0 4px 14px var(--accent-bg);
 }
@@ -951,7 +961,7 @@ html[data-font="large"]  { --font-size: 16px; }
 .chan-item.offline { color: var(--text-dim); font-style: italic; opacity: 0.6; }
 .chan-item.hidden { display: none; }
 .chan-item .unread-badge {
-  background: var(--accent); color: #fff; font-size: 0.62rem;
+  background: var(--accent); color: var(--accent-fg); font-size: 0.62rem;
   padding: 1px 5px; border-radius: 10px; min-width: 18px; text-align: center;
 }
 .chan-item .close-btn {
@@ -1098,7 +1108,7 @@ html[data-font="large"]  { --font-size: 16px; }
 #input-wrap:has(#input:disabled) { opacity: 0.45; cursor: not-allowed; }
 #send-btn {
   background: var(--accent); border: none; border-radius: var(--radius);
-  color: #fff; font-family: var(--font-mono); padding: 9px 20px; cursor: pointer;
+  color: var(--accent-fg); font-family: var(--font-mono); padding: 9px 20px; cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
   box-shadow: 0 2px 8px var(--accent-bg);
 }
@@ -1151,7 +1161,7 @@ html[data-font="large"]  { --font-size: 16px; }
 .dm-avatar {
   width: 58px; height: 58px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem; font-weight: bold; color: #fff;
+  font-size: 1.5rem; font-weight: bold; color: var(--accent-fg);
   box-shadow: 0 0 0 3px var(--bg2), 0 0 0 5px var(--border);
   flex-shrink: 0;
 }
@@ -1300,7 +1310,7 @@ html[data-font="large"]  { --font-size: 16px; }
     position: fixed; z-index: 1;
     bottom: 72px; left: 50%; transform: translateX(-50%);
     width: 48px; height: 48px; border-radius: 50%;
-    background: var(--accent); color: #fff; border: none;
+    background: var(--accent); color: var(--accent-fg); border: none;
     font-size: 1.4rem; cursor: pointer;
     box-shadow: 0 4px 16px rgba(0,0,0,0.35);
     opacity: 0; pointer-events: none;
