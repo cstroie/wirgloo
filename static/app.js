@@ -2401,7 +2401,7 @@ function renderText(raw, noMarkdown=false) {
     if (under)  st.push('text-decoration:underline');
     if (strike) st.push('text-decoration:line-through');
     if (fg)     st.push(`color:${fg}`);
-    if (bg)     st.push(`background:${bg};padding:0 2px;border-radius:2px`);
+    if (bg)     st.push(`background:${bg}`);
     if (mono)   s = `<code>${escHtml(buf)}</code>`;
     else if (st.length) s = `<span style="${st.join(';')}">${s}</span>`;
     out += s;

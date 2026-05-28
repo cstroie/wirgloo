@@ -1045,6 +1045,7 @@ html[data-font="large"]  { --font-size: 16px; }
 .nick-link { cursor: pointer; }
 .nick-link:hover { text-decoration: underline; }
 .msg .text { flex: 1; min-width: 0; white-space: pre-wrap; }
+.msg .text span[style*="background"] { padding: 0 2px; border-radius: 2px; }
 .msg-header { display: none; }
 .nick-mention { font-weight: bold; }
 
