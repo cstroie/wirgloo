@@ -140,7 +140,6 @@ let markdownEnabled      = true;
 let highlightWords       = [];
 let notificationsEnabled = false;
 let hideJoinPart         = false;
-let enterToSend          = true;
 let stripColors          = false;
 let autoAwayMins         = 5;
 let logMax               = 500;
@@ -204,8 +203,6 @@ function applyMarkdownSetting(enabled) {
   hideJoinPart = localStorage.getItem('wirgloo:cfg:hidejoinpart') === 'on';
   syncToggleBtns('hidejoinpart', hideJoinPart);
 
-  enterToSend = localStorage.getItem('wirgloo:cfg:entertosend') !== 'off';
-  syncToggleBtns('entertosend', enterToSend);
 
   stripColors = localStorage.getItem('wirgloo:cfg:stripcolors') === 'on';
   syncToggleBtns('stripcolors', stripColors);
@@ -259,10 +256,6 @@ function applyMarkdownSetting(enabled) {
       syncToggleBtns('hidejoinpart', on);
       localStorage.setItem('wirgloo:cfg:hidejoinpart', on ? 'on' : 'off');
       messages.classList.toggle('hide-joins', on);
-    } else if (s === 'entertosend') {
-      enterToSend = on;
-      syncToggleBtns('entertosend', on);
-      localStorage.setItem('wirgloo:cfg:entertosend', on ? 'on' : 'off');
     } else if (s === 'stripcolors') {
       stripColors = on;
       syncToggleBtns('stripcolors', on);
@@ -1892,7 +1885,7 @@ $('userlist-toggle').addEventListener('click', () => {
 
 $('send-btn').addEventListener('click', sendInput);
 input.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (enterToSend || e.ctrlKey || e.metaKey)) { sendInput(); tabComplete.reset(); inputHistory.reset(); }
+  if (e.key === 'Enter') { sendInput(); tabComplete.reset(); inputHistory.reset(); }
   else if (e.key === 'Tab') { e.preventDefault(); tabComplete.next(); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); inputHistory.prev(); tabComplete.reset(); }
   else if (e.key === 'ArrowDown') { e.preventDefault(); inputHistory.next(); tabComplete.reset(); }

@@ -80,6 +80,7 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 
 **UI**
 - Auto light/dark theme via `prefers-color-scheme`
+- Full-width or contained layout mode (responsive breakpoints, settable per client)
 - JetBrains Mono font
 - Nick colours derived from a hash (consistent across sessions)
 - Rate-limited outbound IRC (token bucket, 3 lines/sec)
