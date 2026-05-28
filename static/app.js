@@ -177,6 +177,13 @@ function applyFontSize(size) {
   });
 }
 
+function applyPalette(palette) {
+  document.documentElement.setAttribute('data-palette', palette);
+  const sel = document.getElementById('palette-select');
+  if (sel) sel.value = palette;
+  recomputeNickColors();
+}
+
 function applyLayout(value) {
   document.documentElement.setAttribute('data-layout', value);
   document.querySelectorAll('[data-setting="layout"]').forEach(btn => {
@@ -192,6 +199,7 @@ function applyMarkdownSetting(enabled) {
 }
 
 (function initSettings() {
+  applyPalette(localStorage.getItem('wirgloo:cfg:palette') || 'default');
   applyLayout(localStorage.getItem('wirgloo:cfg:layout') || 'fluid');
   applyFontSize(localStorage.getItem('wirgloo:cfg:font') || 'medium');
   applyMarkdownSetting(localStorage.getItem('wirgloo:cfg:markdown') !== 'off');
@@ -218,7 +226,10 @@ function applyMarkdownSetting(enabled) {
   if (logInput) logInput.value = logMax;
 
   document.addEventListener('input', e => {
-    if (e.target.id === 'highlight-words') {
+    if (e.target.id === 'palette-select') {
+      applyPalette(e.target.value);
+      localStorage.setItem('wirgloo:cfg:palette', e.target.value);
+    } else if (e.target.id === 'highlight-words') {
       applyHighlightWords(e.target.value);
       localStorage.setItem('wirgloo:cfg:highlights', e.target.value);
     } else if (e.target.id === 'autoaway-mins') {
