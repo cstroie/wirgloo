@@ -228,6 +228,7 @@ function applyMarkdownSetting(enabled) {
     if (e.target.id === 'palette-select') {
       applyPalette(e.target.value);
       localStorage.setItem('wirgloo:cfg:palette', e.target.value);
+      if (state.server) saveSrv(state.server, { palette: e.target.value });
       recomputeNickColors();
     } else if (e.target.id === 'highlight-words') {
       applyHighlightWords(e.target.value);
@@ -877,6 +878,8 @@ function handle(msg) {
       requestNotifyPermission();
       preloadLogs(state.server).then(() => {
         loadIgnored(state.server);
+        const srvPalette = loadSrv(state.server).palette;
+        if (srvPalette) { applyPalette(srvPalette); recomputeNickColors(); }
         restoreSavedChannels(state.server);
         if (!state.channels.has('*list*')) {
           state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
@@ -913,6 +916,8 @@ function handle(msg) {
       applyServerMeta(msg.network, msg.servername, msg.welcome);
       const resumedChannels = msg.channels || [];
       loadIgnored(state.server);
+      const resumedPalette = loadSrv(state.server).palette;
+      if (resumedPalette) { applyPalette(resumedPalette); recomputeNickColors(); }
       restoreChannelsWithHistory(state.server).then(() => {
         resumedChannels.forEach(ch => {
           const k = chanKey(ch);
