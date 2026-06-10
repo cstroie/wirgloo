@@ -53,7 +53,7 @@ All server-side Go lives in `cmd/wirgloo/` as `package main`:
 
 ### WebSocket message protocol
 
-JSON objects with a `"type"` field. Server → browser types: `connected`, `resumed`, `session_expired`, `connect_error`, `disconnected`, `message`, `notice`, `join`, `part`, `nick`, `quit`, `kick`, `mode`, `topic`, `invite`, `names_chunk`, `names_end`, `whois`, `away`, `away_status`, `motd`, `isupport_prefix`, `list_start`, `list_item`, `list_end`, `error`.
+JSON objects with a `"type"` field. Server → browser types: `caps`, `connected`, `resumed`, `session_expired`, `connect_error`, `disconnected`, `message`, `notice`, `join`, `part`, `nick`, `quit`, `kick`, `mode`, `topic`, `invite`, `names_chunk`, `names_end`, `whois`, `away`, `away_status`, `motd`, `isupport_prefix`, `list_start`, `list_item`, `list_end`, `error`.
 
 Browser → server types (dispatched in `handler.go`): `connect`, `disconnect`, `join`, `part`, `message`, `nick`, `raw`.
 
@@ -75,6 +75,10 @@ Browser → server types (dispatched in `handler.go`): `connect`, `disconnect`, 
 Chat logs use IndexedDB (`getDB()` / `persistMsg()` / `preloadLogs(server)`). On session resume or fresh connect, `preloadLogs(server)` loads up to 500 messages per channel into `msgCache` (in-memory Map) so `loadLog()` stays synchronous. `persistMsg()` writes to IndexedDB asynchronously (fire and forget) and updates `msgCache` immediately.
 
 The `resumed` message from the server provides the server hostname; `restoreChannelsWithHistory(server)` uses it to preload history before rendering channels. No server identity is stored client-side between sessions.
+
+### IRCv3 capabilities
+
+Every connection requests `multi-prefix away-notify server-time userhost-in-names echo-message` (plus `sasl` when that auth method is chosen). ACKed caps are tracked in `Session.caps` and sent to the browser via the `caps` WS message (also included in `resumed`). With `echo-message`, the server echoes our own PRIVMSG/NOTICE back: the browser suppresses local echo when `state.caps` has `echo-message` (`hasEcho()` in app.js), and `ircLoop` drops echoed CTCP requests/replies so we never auto-reply to ourselves. `server-time` timestamps are parsed by `msgTime()` and sent as `ts`.
 
 ### Auth flow
 

@@ -68,6 +68,7 @@ type Session struct {
 	lastPong   time.Time       // wall time of the most recent PONG received
 	sendQ      chan string      // rate-limited outbound IRC line queue
 	channels   map[string]bool // channels the client is currently joined to
+	caps       map[string]bool // IRCv3 capabilities ACKed by the server
 	network    string          // NETWORK= value from 005, e.g. "Libera.Chat"
 	servername string          // server hostname from 004 RPL_MYINFO
 	welcome    string          // trailing text of the 001 welcome numeric
@@ -91,7 +92,7 @@ func NewRegistry() *Registry {
 // called to establish one.
 func (r *Registry) New(ws *websocket.Conn) *Session {
 	id := newID()
-	s := &Session{ID: id, ws: ws, done: make(chan struct{}), channels: make(map[string]bool), meta: make(map[string]any)}
+	s := &Session{ID: id, ws: ws, done: make(chan struct{}), channels: make(map[string]bool), caps: make(map[string]bool), meta: make(map[string]any)}
 	r.mu.Lock()
 	r.sessions[id] = s
 	r.mu.Unlock()
@@ -184,12 +185,12 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 
 	serverPass := ""
 	// Always request multi-prefix; add sasl if that auth method is chosen.
-	capReq := "multi-prefix away-notify server-time userhost-in-names"
+	capReq := "multi-prefix away-notify server-time userhost-in-names echo-message"
 	switch authMethod {
 	case "server":
 		serverPass = pass
 	case "sasl":
-		capReq = "multi-prefix away-notify server-time userhost-in-names sasl"
+		capReq += " sasl"
 	}
 
 	if err := ircHandshake(conn, nick, nick, realname, serverPass, capReq); err != nil {
@@ -272,8 +273,12 @@ func (s *Session) SendResumed() {
 	welcome := s.welcome
 	meta := s.meta
 	server := s.server
+	caps := make([]string, 0, len(s.caps))
+	for c := range s.caps {
+		caps = append(caps, c)
+	}
 	s.mu.Unlock()
-	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "server": server, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta})
+	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "server": server, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta, "caps": caps})
 	s.mu.Lock()
 	delete(s.meta, "admin")
 	s.mu.Unlock()
@@ -317,7 +322,15 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if sub == "ACK" {
 				s.mu.Lock()
 				am := s.authMethod
+				for _, c := range strings.Fields(msg.Trailing) {
+					s.caps[c] = true
+				}
+				caps := make([]string, 0, len(s.caps))
+				for c := range s.caps {
+					caps = append(caps, c)
+				}
 				s.mu.Unlock()
+				s.sendWS(map[string]any{"type": "caps", "caps": caps})
 				acked := msg.Trailing + " " + strings.Join(msg.Params, " ")
 				if am == "sasl" && strings.Contains(acked, "sasl") {
 					s.writeNow("AUTHENTICATE PLAIN")
@@ -441,6 +454,9 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if strings.HasPrefix(text, "\x01ACTION ") && strings.HasSuffix(text, "\x01") {
 				// Convert ACTION to the /me pseudo-command used by the UI.
 				text = "/me " + strings.TrimSuffix(strings.TrimPrefix(text, "\x01ACTION "), "\x01")
+			} else if msg.Nick == s.Nick && strings.HasPrefix(text, "\x01") && strings.HasSuffix(text, "\x01") {
+				// echo-message: our own CTCP request echoed back — never auto-reply to ourselves.
+				continue
 			} else if strings.HasPrefix(text, "\x01PING") && strings.HasSuffix(text, "\x01") {
 				// Echo the token back so the requester can measure round-trip time.
 				token := strings.TrimSuffix(strings.TrimPrefix(text, "\x01"), "\x01")
@@ -730,6 +746,10 @@ func (s *Session) ircLoop(lines <-chan string) {
 			}
 			text := msg.Params[1]
 			L.Debug("NOTICE", "session", s.ID, "from", msg.Nick, "target", msg.Params[0])
+			// echo-message: drop our own echoed CTCP replies (PING/VERSION/TIME responses).
+			if msg.Nick == s.Nick && strings.HasPrefix(text, "\x01") && strings.HasSuffix(text, "\x01") {
+				continue
+			}
 			// CTCP VERSION reply: \x01VERSION <string>\x01
 			if strings.HasPrefix(text, "\x01VERSION ") && strings.HasSuffix(text, "\x01") {
 				version := strings.TrimSuffix(strings.TrimPrefix(text, "\x01VERSION "), "\x01")

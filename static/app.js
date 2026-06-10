@@ -77,6 +77,7 @@ const state = {
   // Map<target, {messages: [], nicks: Set, unread: number, mention: boolean}>
   channels: new Map(),
   active: null,
+  caps: new Set(),       // IRCv3 capabilities ACKed by the server
   whoisUsers: new Map(), // nick → structured whois data
   pendingWhois: null,
   ignored: new Set(),    // client-side ignored nicks
@@ -775,6 +776,7 @@ function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
   state.ws = ws;
 
   ws.onopen = () => {
+    state.caps = new Set(); // fresh connection — caps arrive via the 'caps' message
     send({ type: 'connect', server, port, nick, realname, tls, noverify, pass, authmethod: authMethod });
   };
 
@@ -852,6 +854,10 @@ function handle(msg) {
       updateTitle();
       break;
 
+    case 'caps':
+      state.caps = new Set(msg.caps || []);
+      break;
+
     case 'connected': {
       setConnDot('connected');
       const wasReconnect = state.connectParams && !state.connected;
@@ -913,6 +919,7 @@ function handle(msg) {
       updateLagDisplay(null);
       scheduleLagPing(3000);
       if (msg.meta) state.serverMeta = msg.meta;
+      state.caps = new Set(msg.caps || []);
       applyServerMeta(msg.network, msg.servername, msg.welcome);
       const resumedChannels = msg.channels || [];
       loadIgnored(state.server);
@@ -967,18 +974,21 @@ function handle(msg) {
       break;
 
     case 'message': {
-      const target = msg.target.startsWith('#') ? msg.target : msg.from;
+      // echo-message: our own messages come back from the server; an echoed
+      // DM has target = the other party, not us.
+      const self = msg.from === state.nick;
+      const target = msg.target.startsWith('#') ? msg.target : (self ? msg.target : msg.from);
       ensureChannel(target);
       // auto-fetch WHOIS when someone opens a DM with us
-      if (target === msg.from && !state.whoisUsers.has(msg.from) && state.pendingWhois !== msg.from) {
+      if (!self && target === msg.from && !state.whoisUsers.has(msg.from) && state.pendingWhois !== msg.from) {
         state.pendingWhois = msg.from;
         send({ type: 'raw', line: `WHOIS ${msg.from}` });
       }
       const isMe = msg.text.startsWith('/me ');
-      const isMention = !isMe && isMentioned(msg.text);
+      const isMention = !isMe && !self && isMentioned(msg.text);
       const cls  = isMe ? 'me' : (isMention ? 'mention' : '');
       appendMsg(target, { type: cls || 'msg', nick: msg.from, text: msg.text, ts: msg.ts });
-      if (target !== state.active) bumpUnread(target, isMention, msg.from, msg.text);
+      if (target !== state.active && !self) bumpUnread(target, isMention, msg.from, msg.text);
       break;
     }
 
@@ -987,7 +997,11 @@ function handle(msg) {
       const noticeDest = msg.target?.startsWith('#') && state.channels.has(msg.target)
         ? msg.target
         : (state.active || '*server*');
-      appendMsg(noticeDest, { type: 'notice', nick: msg.from, text: msg.text, ts: msg.ts });
+      // echo-message: render our own echoed notices in the outgoing format
+      const text = msg.from === state.nick && !msg.target?.startsWith('#')
+        ? `→ ${msg.target}: ${msg.text}`
+        : msg.text;
+      appendMsg(noticeDest, { type: 'notice', nick: msg.from, text, ts: msg.ts });
       break;
     }
 
@@ -1998,8 +2012,12 @@ function sendInput() {
   }
 
   send({ type: 'message', target: state.active, text: val });
-  appendMsg(state.active, { type: 'msg', nick: state.nick, text: val, ts: Date.now() / 1000 });
+  if (!hasEcho()) appendMsg(state.active, { type: 'msg', nick: state.nick, text: val, ts: Date.now() / 1000 });
 }
+
+// True when the server echoes our own messages back (IRCv3 echo-message),
+// in which case local echo must be skipped to avoid duplicates.
+function hasEcho() { return state.caps.has('echo-message'); }
 
 function handleCommand(raw) {
   const [cmd, ...rest] = raw.split(' ');
@@ -2031,14 +2049,14 @@ function handleCommand(raw) {
       openDM(target);
       if (txt.length) {
         send({ type: 'message', target, text: txt.join(' ') });
-        appendMsg(target, { type: 'msg', nick: state.nick, text: txt.join(' '), ts: Date.now() / 1000 });
+        if (!hasEcho()) appendMsg(target, { type: 'msg', nick: state.nick, text: txt.join(' '), ts: Date.now() / 1000 });
       }
       break;
     }
     case 'ME':
       if (state.active) {
         send({ type: 'message', target: state.active, text: `\x01ACTION ${arg}\x01` });
-        appendMsg(state.active, { type: 'me', nick: state.nick, text: `/me ${arg}`, ts: Date.now() / 1000 });
+        if (!hasEcho()) appendMsg(state.active, { type: 'me', nick: state.nick, text: `/me ${arg}`, ts: Date.now() / 1000 });
       }
       break;
     case 'TOPIC':
@@ -2088,7 +2106,7 @@ function handleCommand(raw) {
       const [ntarget, ...ntxt] = arg.split(' ');
       if (ntarget && ntxt.length) {
         send({ type: 'raw', line: `NOTICE ${ntarget} :${ntxt.join(' ')}` });
-        appendMsg(state.active, { type: 'notice', nick: state.nick, text: `→ ${ntarget}: ${ntxt.join(' ')}`, ts: Date.now() / 1000 });
+        if (!hasEcho()) appendMsg(state.active, { type: 'notice', nick: state.nick, text: `→ ${ntarget}: ${ntxt.join(' ')}`, ts: Date.now() / 1000 });
       }
       break;
     }
@@ -2102,7 +2120,7 @@ function handleCommand(raw) {
       const starget = arg || 'everyone';
       const line = `/me slaps ${starget} around a bit with a large trout`;
       send({ type: 'message', target: state.active, text: `\x01ACTION slaps ${starget} around a bit with a large trout\x01` });
-      appendMsg(state.active, { type: 'me', nick: state.nick, text: line, ts: Date.now() / 1000 });
+      if (!hasEcho()) appendMsg(state.active, { type: 'me', nick: state.nick, text: line, ts: Date.now() / 1000 });
       break;
     }
     case 'CLEAR':
