@@ -797,6 +797,7 @@ function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
 
   ws.onopen = () => {
     state.caps = new Set(); // fresh connection — caps arrive via the 'caps' message
+    pendingSends = [];      // drop anything queued for a previous session
     send({ type: 'connect', server, port, nick, realname, tls, noverify, pass, authmethod: authMethod });
   };
 
@@ -1430,7 +1431,8 @@ function bumpUnread(target, mention, fromNick, text) {
   ch.unread++;
   if (mention) ch.mention = true;
   renderChannelList();
-  if (mention && fromNick && text) notify(target, fromNick, text);
+  // direct messages are always notification-worthy, not just mentions
+  if ((mention || isDM(target)) && fromNick && text) notify(target, fromNick, text);
 }
 
 // ── Browser notifications ─────────────────────────────────────────────────────
@@ -1450,7 +1452,7 @@ function notify(target, fromNick, text) {
   const n = new Notification(`wirgloo — ${label}`, {
     body: text.replace(/\x02|\x1D|\x1F|\x0F|\x16|\x11/g, '').replace(/\x03\d{0,2}(,\d{0,2})?/g, '').slice(0, 120),
     tag:  target, // collapse multiple notifications per target
-    icon: '/favicon.ico',
+    icon: BASE_PATH + '/favicon.ico',
   });
   n.onclick = () => { window.focus(); setActive(target); n.close(); };
 }
@@ -2314,10 +2316,22 @@ document.addEventListener('keydown', resetAutoAway);
 document.addEventListener('mousedown', resetAutoAway);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Messages sent while the socket is down during a session resume are queued
+// and flushed once the resume socket opens, instead of being dropped silently.
+let pendingSends = [];
+
 function send(obj) {
   if (state.ws && state.ws.readyState === WebSocket.OPEN) {
     state.ws.send(JSON.stringify(obj));
+  } else if (state.sessionId && pendingSends.length < 100) {
+    pendingSends.push(obj);
   }
+}
+
+function flushPendingSends() {
+  const q = pendingSends;
+  pendingSends = [];
+  q.forEach(o => send(o));
 }
 
 function scheduleReconnect() {
@@ -2328,8 +2342,9 @@ function scheduleReconnect() {
     appendMsg('*server*', { type: 'connecting', nick: '--', text: 'Reconnecting…' });
     if (state.sessionId) {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const ws = new WebSocket(`${proto}://${location.host}/ws?session=${state.sessionId}`);
+      const ws = new WebSocket(`${proto}://${location.host}${BASE_PATH}/ws?session=${state.sessionId}`);
       state.ws = ws;
+      ws.onopen = flushPendingSends;
       ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.warn('ws message error', err); } };
       ws.onerror = () => {};
       ws.onclose = () => { if (state.sessionId || state.connectParams) scheduleReconnect(); };
@@ -2401,7 +2416,8 @@ function escHtml(s) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function linkify(s) {
@@ -2418,13 +2434,15 @@ function highlightNicks(html, nicks) {
     .sort((a, b) => b.length - a.length)
     .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   if (!escaped.length) return html;
-  const re = new RegExp(`(?<=^|[\\s,;:!?])(?:${escaped.join('|')})(?=[\\s,;:!?]|$|:)`, 'g');
+  // capture the leading boundary instead of a lookbehind (Safari < 16.4
+  // throws on lookbehind at compile time, silently breaking rendering)
+  const re = new RegExp(`(^|[\\s,;:!?])(${escaped.join('|')})(?=[\\s,;:!?]|$|:)`, 'g');
   // walk the html splitting on tags, only transform text nodes
   return html.replace(/(<[^>]+>)|([^<]+)/g, (_, tag, text) => {
     if (tag) return tag;
-    return text.replace(re, m => {
-      const c = nickColor(m);
-      return `<span class="nick-mention" style="${c ? `color:${c}` : ''}">${m}</span>`;
+    return text.replace(re, (m, pre, nick) => {
+      const c = nickColor(nick);
+      return `${pre}<span class="nick-mention" style="${c ? `color:${c}` : ''}">${nick}</span>`;
     });
   });
 }
@@ -2451,6 +2469,20 @@ function applyMarkdown(s) {
     .replace(/`([^`\n]+)`/g,             '<code>$1</code>');
 }
 
+// Apply markdown to the text nodes of an HTML string, skipping anchor
+// contents so linkified URLs with _ or * are not mangled.
+function applyMarkdownSafe(html) {
+  let inAnchor = false;
+  return html.replace(/(<[^>]+>)|([^<]+)/g, (_, tag, text) => {
+    if (tag) {
+      if (/^<a[\s>]/i.test(tag)) inAnchor = true;
+      else if (/^<\/a>/i.test(tag)) inAnchor = false;
+      return tag;
+    }
+    return inAnchor ? text : applyMarkdown(text);
+  });
+}
+
 function renderText(raw, noMarkdown=false) {
   const hasIRC = /[\x02\x03\x0f\x11\x1d\x1e\x1f]/.test(raw);
   let bold=false, italic=false, under=false, strike=false, mono=false;
@@ -2459,7 +2491,9 @@ function renderText(raw, noMarkdown=false) {
 
   const flush = () => {
     if (!buf) return;
-    let s = linkify((hasIRC || noMarkdown || !markdownEnabled) ? escHtml(buf) : applyMarkdown(escHtml(buf)));
+    // linkify before markdown so URLs containing _ or * survive intact
+    let s = linkify(escHtml(buf));
+    if (!hasIRC && !noMarkdown && markdownEnabled) s = applyMarkdownSafe(s);
     const st = [];
     if (bold)   st.push('font-weight:bold');
     if (italic) st.push('font-style:italic');
@@ -2480,6 +2514,7 @@ function renderText(raw, noMarkdown=false) {
     else if (c === '\x1F') { flush(); under  = !under;  i++; }
     else if (c === '\x1E') { flush(); strike = !strike; i++; }
     else if (c === '\x11') { flush(); mono   = !mono;   i++; }
+    else if (c === '\x16') { i++; } // reverse video — unsupported, consume so it never reaches the DOM
     else if (c === '\x0F') { flush(); bold=italic=under=strike=mono=false; fg=bg=null; i++; }
     else if (c === '\x03') {
       flush(); i++;
