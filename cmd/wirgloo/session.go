@@ -44,6 +44,19 @@ const (
 	sendInterval = 333 * time.Millisecond // one new token every ~333 ms (≈ 3 lines/sec)
 )
 
+// wantedCaps are the IRCv3 capabilities requested when the server offers them
+// (intersected with CAP LS). "sasl" is appended when that auth method is chosen.
+var wantedCaps = []string{"multi-prefix", "away-notify", "server-time", "userhost-in-names", "echo-message", "batch", "draft/chathistory"}
+
+// chatHistoryLimit is the number of messages requested per CHATHISTORY command.
+const chatHistoryLimit = 100
+
+// batchInfo describes an open IRCv3 batch (BATCH +ref <type> [params...]).
+type batchInfo struct {
+	typ    string
+	target string
+}
+
 // listEntry is one row from an IRC LIST response.
 type listEntry struct {
 	channel string
@@ -68,7 +81,9 @@ type Session struct {
 	lastPong   time.Time       // wall time of the most recent PONG received
 	sendQ      chan string      // rate-limited outbound IRC line queue
 	channels   map[string]bool // channels the client is currently joined to
-	caps       map[string]bool // IRCv3 capabilities ACKed by the server
+	caps       map[string]bool      // IRCv3 capabilities ACKed by the server
+	capsLS     []string             // capabilities advertised in CAP LS (may span several lines)
+	batches    map[string]batchInfo // open IRCv3 batches keyed by reference tag
 	network    string          // NETWORK= value from 005, e.g. "Libera.Chat"
 	servername string          // server hostname from 004 RPL_MYINFO
 	welcome    string          // trailing text of the 001 welcome numeric
@@ -92,7 +107,7 @@ func NewRegistry() *Registry {
 // called to establish one.
 func (r *Registry) New(ws *websocket.Conn) *Session {
 	id := newID()
-	s := &Session{ID: id, ws: ws, done: make(chan struct{}), channels: make(map[string]bool), caps: make(map[string]bool), meta: make(map[string]any)}
+	s := &Session{ID: id, ws: ws, done: make(chan struct{}), channels: make(map[string]bool), caps: make(map[string]bool), batches: make(map[string]batchInfo), meta: make(map[string]any)}
 	r.mu.Lock()
 	r.sessions[id] = s
 	r.mu.Unlock()
@@ -184,16 +199,11 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 	s.mu.Unlock()
 
 	serverPass := ""
-	// Always request multi-prefix; add sasl if that auth method is chosen.
-	capReq := "multi-prefix away-notify server-time userhost-in-names echo-message"
-	switch authMethod {
-	case "server":
+	if authMethod == "server" {
 		serverPass = pass
-	case "sasl":
-		capReq += " sasl"
 	}
 
-	if err := ircHandshake(conn, nick, nick, realname, serverPass, capReq); err != nil {
+	if err := ircHandshake(conn, nick, nick, realname, serverPass); err != nil {
 		conn.Close()
 		L.Error("IRC handshake failed", "session", s.ID, "err", err)
 		s.sendWS(map[string]any{"type": "connect_error", "text": err.Error()})
@@ -315,14 +325,48 @@ func (s *Session) ircLoop(lines <-chan string) {
 		msg := ircParseLine(line)
 		switch msg.Command {
 		case "CAP":
-			sub := ""
-			if len(msg.Params) >= 2 {
-				sub = msg.Params[len(msg.Params)-2]
+			// Params: [target, subcommand, ["*",] cap-list] — the "*" marks a
+			// multi-line CAP LS reply with more lines to follow.
+			if len(msg.Params) < 2 {
+				continue
 			}
-			if sub == "ACK" {
+			sub := msg.Params[1]
+			capList := msg.Params[len(msg.Params)-1]
+			switch sub {
+			case "LS":
+				s.mu.Lock()
+				s.capsLS = append(s.capsLS, strings.Fields(capList)...)
+				offered := s.capsLS
+				am := s.authMethod
+				s.mu.Unlock()
+				if len(msg.Params) >= 4 && msg.Params[2] == "*" {
+					continue // more LS lines coming
+				}
+				// Request the intersection of wanted and advertised caps.
+				avail := make(map[string]bool, len(offered))
+				for _, c := range offered {
+					name, _, _ := strings.Cut(c, "=") // strip cap values, e.g. sasl=PLAIN
+					avail[name] = true
+				}
+				want := wantedCaps
+				if am == "sasl" {
+					want = append(append([]string{}, wantedCaps...), "sasl")
+				}
+				var req []string
+				for _, c := range want {
+					if avail[c] {
+						req = append(req, c)
+					}
+				}
+				if len(req) == 0 {
+					s.writeNow("CAP END")
+					continue
+				}
+				s.writeNow("CAP REQ :" + strings.Join(req, " "))
+			case "ACK":
 				s.mu.Lock()
 				am := s.authMethod
-				for _, c := range strings.Fields(msg.Trailing) {
+				for _, c := range strings.Fields(capList) {
 					s.caps[c] = true
 				}
 				caps := make([]string, 0, len(s.caps))
@@ -331,14 +375,43 @@ func (s *Session) ircLoop(lines <-chan string) {
 				}
 				s.mu.Unlock()
 				s.sendWS(map[string]any{"type": "caps", "caps": caps})
-				acked := msg.Trailing + " " + strings.Join(msg.Params, " ")
-				if am == "sasl" && strings.Contains(acked, "sasl") {
+				if am == "sasl" && strings.Contains(" "+capList+" ", " sasl ") {
 					s.writeNow("AUTHENTICATE PLAIN")
 				} else {
 					s.writeNow("CAP END")
 				}
-			} else if sub == "NAK" {
+			case "NAK":
 				s.writeNow("CAP END")
+			}
+
+		case "BATCH":
+			// BATCH +ref <type> [params...] opens a batch; BATCH -ref closes it.
+			if len(msg.Params) == 0 || len(msg.Params[0]) < 2 {
+				continue
+			}
+			ref := msg.Params[0][1:]
+			if msg.Params[0][0] == '+' {
+				b := batchInfo{}
+				if len(msg.Params) > 1 {
+					b.typ = msg.Params[1]
+				}
+				if len(msg.Params) > 2 {
+					b.target = msg.Params[2]
+				}
+				s.mu.Lock()
+				s.batches[ref] = b
+				s.mu.Unlock()
+				if isHistoryBatch(b.typ) {
+					s.sendWS(map[string]any{"type": "history_start", "target": b.target})
+				}
+			} else if msg.Params[0][0] == '-' {
+				s.mu.Lock()
+				b := s.batches[ref]
+				delete(s.batches, ref)
+				s.mu.Unlock()
+				if isHistoryBatch(b.typ) {
+					s.sendWS(map[string]any{"type": "history_end", "target": b.target})
+				}
 			}
 
 		case "AUTHENTICATE":
@@ -489,7 +562,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.sendWS(map[string]any{
 				"type": "message", "from": msg.Nick,
 				"target": target, "text": text,
-				"ts": msgTime(msg),
+				"ts": msgTime(msg), "history": s.inHistoryBatch(msg),
 			})
 
 		case "JOIN":
@@ -782,7 +855,7 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.sendWS(map[string]any{
 				"type": "notice", "from": msg.Nick,
 				"target": msg.Params[0], "text": text,
-				"ts": msgTime(msg),
+				"ts": msgTime(msg), "history": s.inHistoryBatch(msg),
 			})
 		}
 	}
@@ -893,6 +966,41 @@ func (s *Session) pingLoop() {
 			s.writeNow("PING :wirgloo")
 			pingSent = time.Now()
 		}
+	}
+}
+
+// isHistoryBatch reports whether a batch type carries chat history playback.
+func isHistoryBatch(typ string) bool {
+	return typ == "chathistory" || typ == "draft/chathistory"
+}
+
+// inHistoryBatch reports whether msg arrived inside an open chathistory batch.
+func (s *Session) inHistoryBatch(msg ircMessage) bool {
+	ref, ok := msg.Tags["batch"]
+	if !ok {
+		return false
+	}
+	s.mu.Lock()
+	b := s.batches[ref]
+	s.mu.Unlock()
+	return isHistoryBatch(b.typ)
+}
+
+// ChatHistory requests message history for target from the server (IRCv3
+// draft/chathistory). before, when non-empty, is an RFC3339 timestamp to page
+// backwards from; otherwise the latest messages are requested. No-op when the
+// server did not ACK the capability.
+func (s *Session) ChatHistory(target, before string) {
+	s.mu.Lock()
+	ok := s.caps["draft/chathistory"] || s.caps["chathistory"]
+	s.mu.Unlock()
+	if !ok || target == "" {
+		return
+	}
+	if before != "" {
+		s.SendIRC(fmt.Sprintf("CHATHISTORY BEFORE %s timestamp=%s %d", target, before, chatHistoryLimit))
+	} else {
+		s.SendIRC(fmt.Sprintf("CHATHISTORY LATEST %s * %d", target, chatHistoryLimit))
 	}
 }
 

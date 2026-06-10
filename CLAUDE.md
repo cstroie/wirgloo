@@ -78,7 +78,9 @@ The `resumed` message from the server provides the server hostname; `restoreChan
 
 ### IRCv3 capabilities
 
-Every connection requests `multi-prefix away-notify server-time userhost-in-names echo-message` (plus `sasl` when that auth method is chosen). ACKed caps are tracked in `Session.caps` and sent to the browser via the `caps` WS message (also included in `resumed`). With `echo-message`, the server echoes our own PRIVMSG/NOTICE back: the browser suppresses local echo when `state.caps` has `echo-message` (`hasEcho()` in app.js), and `ircLoop` drops echoed CTCP requests/replies so we never auto-reply to ourselves. `server-time` timestamps are parsed by `msgTime()` and sent as `ts`.
+Capability negotiation uses `CAP LS 302`: the handshake sends `CAP LS 302`, the CAP handler intersects the advertised list with `wantedCaps` (`multi-prefix away-notify server-time userhost-in-names echo-message batch draft/chathistory`, plus `sasl` when that auth method is chosen) and REQs only what the server offers — never REQ blindly, since servers NAK the whole request if any cap is unsupported. ACKed caps are tracked in `Session.caps` and sent to the browser via the `caps` WS message (also included in `resumed`).
+
+`draft/chathistory`: on self-join the browser sends a `chathistory` WS message; `Session.ChatHistory` issues `CHATHISTORY LATEST <target> * 100` (or `BEFORE timestamp=<RFC3339>` when paging). History arrives in an IRCv3 batch — `Session.batches` tracks open batches, playback PRIVMSG/NOTICE are forwarded with `"history": true` plus `history_start`/`history_end` markers, and the browser dedups them against the local log via `isDuplicateMsg()` (same nick+text+second-resolution ts) and skips unread/notification side effects. With `echo-message`, the server echoes our own PRIVMSG/NOTICE back: the browser suppresses local echo when `state.caps` has `echo-message` (`hasEcho()` in app.js), and `ircLoop` drops echoed CTCP requests/replies so we never auto-reply to ourselves. `server-time` timestamps are parsed by `msgTime()` and sent as `ts`.
 
 ### Auth flow
 

@@ -67,14 +67,12 @@ func setKeepalive(conn net.Conn) {
 	}
 }
 
-// ircHandshake sends the IRC registration sequence. capReq, if non-empty, is
-// sent as "CAP REQ :<capReq>" before NICK/USER to start capability negotiation.
-// pass is sent as a PASS command only when non-empty.
-func ircHandshake(conn net.Conn, nick, user, realname, pass, capReq string) error {
-	var lines []string
-	if capReq != "" {
-		lines = append(lines, "CAP REQ :"+capReq)
-	}
+// ircHandshake sends the IRC registration sequence. "CAP LS 302" is sent
+// before NICK/USER to start capability negotiation; the session's CAP handler
+// intersects the advertised capabilities with the ones we want, REQs those,
+// and finishes with CAP END. pass is sent as a PASS command only when non-empty.
+func ircHandshake(conn net.Conn, nick, user, realname, pass string) error {
+	lines := []string{"CAP LS 302"}
 	if pass != "" {
 		lines = append(lines, fmt.Sprintf("PASS %s", pass))
 	}

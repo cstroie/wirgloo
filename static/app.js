@@ -999,8 +999,10 @@ function handle(msg) {
       const self = msg.from === state.nick;
       const target = msg.target.startsWith('#') ? msg.target : (self ? msg.target : msg.from);
       ensureChannel(target);
+      // chathistory playback — skip messages already in the local log
+      if (msg.history && isDuplicateMsg(target, msg.from, msg.text, msg.ts)) break;
       // auto-fetch WHOIS when someone opens a DM with us
-      if (!self && target === msg.from && !state.whoisUsers.has(msg.from) && state.pendingWhois !== msg.from) {
+      if (!self && !msg.history && target === msg.from && !state.whoisUsers.has(msg.from) && state.pendingWhois !== msg.from) {
         state.pendingWhois = msg.from;
         send({ type: 'raw', line: `WHOIS ${msg.from}` });
       }
@@ -1008,7 +1010,7 @@ function handle(msg) {
       const isMention = !isMe && !self && isMentioned(msg.text);
       const cls  = isMe ? 'me' : (isMention ? 'mention' : '');
       appendMsg(target, { type: cls || 'msg', nick: msg.from, text: msg.text, ts: msg.ts });
-      if (target !== state.active && !self) bumpUnread(target, isMention, msg.from, msg.text);
+      if (target !== state.active && !self && !msg.history) bumpUnread(target, isMention, msg.from, msg.text);
       break;
     }
 
@@ -1017,6 +1019,7 @@ function handle(msg) {
       const noticeDest = msg.target?.startsWith('#') && state.channels.has(msg.target)
         ? msg.target
         : (state.active || '*server*');
+      if (msg.history && isDuplicateMsg(noticeDest, msg.from, msg.text, msg.ts)) break;
       // echo-message: render our own echoed notices in the outgoing format
       const text = msg.from === state.nick && !msg.target?.startsWith('#')
         ? `→ ${msg.target}: ${msg.text}`
@@ -1037,6 +1040,9 @@ function handle(msg) {
           state.joiningChannels.add(msg.channel);
           appendMsg(msg.channel, { type: 'system', nick: '*', text: `Now talking on ${msg.channel}` });
         }
+        // chathistory: backfill messages missed while we were gone
+        if (state.caps.has('draft/chathistory') || state.caps.has('chathistory'))
+          send({ type: 'chathistory', target: msg.channel });
         setActive(msg.channel);
         saveChannels(state.server); saveDMs(state.server);
       } else {
@@ -1543,6 +1549,15 @@ function renderMessages(target) {
     prevNick = m.nick || null; prevTs = m.ts || 0; prevType = m.type || 'msg';
   });
   requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
+}
+
+// isDuplicateMsg reports whether an identical message (same author, text and
+// second-resolution timestamp) is already in the channel's local log — used to
+// dedup chathistory playback against the IndexedDB-replayed log.
+function isDuplicateMsg(target, nick, text, ts) {
+  const ch = state.channels.get(target);
+  if (!ch) return false;
+  return ch.messages.some(m => m.ts === ts && m.nick === nick && m.text === text);
 }
 
 function appendMsg(target, m) {

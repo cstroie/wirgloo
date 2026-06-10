@@ -50,6 +50,7 @@ type inMsg struct {
 	Target     string `json:"target"`
 	Text       string `json:"text"`
 	Line       string `json:"line"`
+	Before     string `json:"before"` // RFC3339 timestamp for chathistory paging
 }
 
 // wsHandler returns an http.HandlerFunc that upgrades the connection to
@@ -177,6 +178,8 @@ func dispatch(s *Session, msg inMsg) error {
 		return s.SendIRC(msg.Line)
 	case "list_filter":
 		s.FilterList(msg.Text)
+	case "chathistory":
+		s.ChatHistory(sanitize(msg.Target), sanitize(msg.Before))
 	}
 	return nil
 }
