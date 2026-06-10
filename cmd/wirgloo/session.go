@@ -311,7 +311,7 @@ func (s *Session) appendMeta(key string, value string) {
 // it sends a "disconnected" message so the browser can show a reconnect UI.
 func (s *Session) ircLoop(lines <-chan string) {
 	for line := range lines {
-		L.Debug("irc recv", "session", s.ID, "line", line)
+		L.Debug("irc recv", "session", s.ID, "line", redactIRC(line))
 		msg := ircParseLine(line)
 		switch msg.Command {
 		case "CAP":
@@ -389,6 +389,13 @@ func (s *Session) ircLoop(lines <-chan string) {
 				if ap != "" {
 					s.SendIRC("NICKSERV IDENTIFY " + ap)
 				}
+			}
+			// A NickServ auth method with no password (e.g. connect form
+			// prefilled from a saved profile, which never stores passwords)
+			// would otherwise skip IDENTIFY silently.
+			if (am == "nickserv" || am == "nickserv_cmd") && ap == "" {
+				L.Warn("nickserv auth selected but no password given", "session", s.ID)
+				s.sendWS(map[string]any{"type": "error", "text": "NickServ auth selected but no password was entered — not identified"})
 			}
 			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick, "session": s.ID, "welcome": msg.Trailing})
 			s.SendIRC("ADMIN")
@@ -470,6 +477,12 @@ func (s *Session) ircLoop(lines <-chan string) {
 				continue
 			} else if strings.HasPrefix(text, "\x01") && strings.HasSuffix(text, "\x01") {
 				// Unrecognised CTCP request — ignore rather than forward to the UI.
+				continue
+			}
+			// echo-message: never forward our own echoed messages to NickServ —
+			// they may contain an IDENTIFY password and would otherwise be
+			// displayed and persisted in the browser's chat history.
+			if msg.Nick == s.Nick && strings.EqualFold(target, "NickServ") {
 				continue
 			}
 			L.Debug("PRIVMSG", "session", s.ID, "from", msg.Nick, "target", target)
@@ -910,18 +923,24 @@ func (s *Session) Close() {
 }
 
 // redactIRC replaces the payload of sensitive IRC commands with "***" so
-// passwords never appear in debug logs.
+// passwords never appear in debug logs. Patterns are matched anywhere in the
+// line, not just at the start, so echoed/inbound lines with a tags+prefix
+// preamble (e.g. "@time=... :nick!u@h PRIVMSG NickServ :IDENTIFY ...") are
+// redacted too.
 func redactIRC(line string) string {
 	upper := strings.ToUpper(line)
-	for _, cmd := range []string{"PASS ", "AUTHENTICATE ", "NICKSERV IDENTIFY ", "PRIVMSG NICKSERV :"} {
+	// Commands that only carry secrets at the start of an outbound line.
+	for _, cmd := range []string{"PASS ", "AUTHENTICATE "} {
 		if strings.HasPrefix(upper, cmd) {
 			return line[:len(cmd)] + "***"
 		}
 	}
-	// NickServ IDENTIFY sent as PRIVMSG: "PRIVMSG NickServ :IDENTIFY <pass>"
-	if strings.HasPrefix(upper, "PRIVMSG NICKSERV :IDENTIFY ") ||
-		strings.HasPrefix(upper, "PRIVMSG NICKSERV :IDENTIFY\t") {
-		return line[:strings.Index(upper, ":IDENTIFY ")+len(":IDENTIFY ")] + "***"
+	// NickServ commands may appear mid-line on inbound/echoed messages with a
+	// tags+prefix preamble (e.g. "@time=... :nick!u@h PRIVMSG NickServ :IDENTIFY ...").
+	for _, cmd := range []string{"PRIVMSG NICKSERV :IDENTIFY ", "PRIVMSG NICKSERV :", "NICKSERV IDENTIFY "} {
+		if idx := strings.Index(upper, cmd); idx != -1 {
+			return line[:idx+len(cmd)] + "***"
+		}
 	}
 	return line
 }
