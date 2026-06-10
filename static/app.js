@@ -1232,6 +1232,13 @@ function handle(msg) {
       appendMsg(state.active || '*server*', { type: 'system', nick: '--', text: `You are now an IRC operator: ${msg.text}` });
       break;
 
+    case 'join_error': {
+      const ch = msg.channel || '';
+      const label = ch ? `Cannot join ${ch}: ` : 'Cannot join channel: ';
+      appendMsg('*server*', { type: 'error', nick: '!', text: label + msg.text });
+      break;
+    }
+
     case 'error':
       if (!state.connected) { onConnectFailed(msg.text); break; }
       appendMsg(state.active || '*server*', { type: 'error', nick: '!', text: msg.text });

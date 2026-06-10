@@ -651,6 +651,19 @@ func (s *Session) ircLoop(lines <-chan string) {
 		case "381": // RPL_YOUREOPER
 			s.sendWS(map[string]any{"type": "youreoper", "text": msg.Trailing})
 
+		case "403", "405", "471", "473", "474", "475", "476", "477", "479", "485": // join errors
+			// Params: [clientNick, channel, reason-text]
+			channel := ""
+			if len(msg.Params) >= 2 {
+				channel = msg.Params[1]
+			}
+			reason := msg.Trailing
+			if reason == "" {
+				reason = strings.Join(msg.Params[2:], " ")
+			}
+			L.Warn("cannot join", "session", s.ID, "channel", channel, "reason", reason)
+			s.sendWS(map[string]any{"type": "join_error", "channel": channel, "text": reason})
+
 		case "433": // ERR_NICKNAMEINUSE
 			L.Warn("nick in use", "session", s.ID, "nick", s.Nick)
 			s.sendWS(map[string]any{"type": "error", "text": "Nickname already in use"})
