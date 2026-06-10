@@ -29,7 +29,7 @@
 
 Most web IRC clients require a stack: a Node process, a database, a reverse proxy, npm dependencies to keep updated. Wirgloo is a single statically-linked Go binary that embeds the entire UI. Drop it on a $5 VPS, point a browser at it, done.
 
-- **Persistent sessions** — your IRC connection stays alive when the browser tab closes or the network drops. Reconnect within 30 minutes (configurable) and resume right where you left off.
+- **Persistent sessions** — your IRC connection stays alive when the browser tab closes or the network drops. Reconnect within 60 minutes (configurable) and resume right where you left off.
 - **Zero client dependencies** — plain HTML/CSS/JS, no framework, no bundler. Works in any modern browser.
 - **One binary** — static files are baked in at build time. Copy and run.
 
@@ -45,10 +45,19 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - Transparent reconnect after server restart: channels re-joined, messages preserved
 - Offline channel placeholders in the sidebar — click to rejoin
 
+**IRCv3**
+- `CAP LS 302` capability negotiation — only capabilities the server advertises are requested
+- `server-time` — accurate message timestamps, also during history playback
+- `echo-message` — your messages are displayed from the server's echo, with authoritative timestamps
+- `away-notify` — live away status in the user list, no polling
+- `multi-prefix` and `userhost-in-names` — richer NAMES data
+- `batch` + `draft/chathistory` — channel history backfilled automatically on join (Ergo, soju, and other servers that support it), deduplicated against the local log
+
 **Authentication**
 - SASL PLAIN (full CAP negotiation)
 - NickServ IDENTIFY (PRIVMSG and NICKSERV command variants)
 - Server password (PASS)
+- A visible warning when the chosen auth method cannot run (no password given, or SASL not offered by the server) — never a silent skip
 
 **Channels & messaging**
 - Channels, private messages, `/me` actions
@@ -57,9 +66,10 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - Nick mentions highlighted in their assigned colour
 - Chat log persisted per server/channel in IndexedDB (up to `logMax` messages, default 500), replayed on reconnect with a session-break marker
 - Join/part/quit/kick events with directional arrows (`→` / `←`)
+- Browser notifications for nick mentions and direct messages (when the tab is unfocused)
 
 **User list**
-- IRCv3 `multi-prefix` CAP — all privilege levels shown per nick
+- All privilege levels shown per nick (IRCv3 `multi-prefix`), away status updated live (`away-notify`)
 - Prefix symbols coloured by role: `~` owner · `&` admin · `@` op · `%` half-op · `+` voice
 - Server `PREFIX` (005) parsed at connect time — adapts to any IRCd
 
@@ -80,6 +90,7 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 
 **UI**
 - Auto light/dark theme via `prefers-color-scheme`
+- Colour palettes saved per server, previewed instantly when picking a network in the connect form
 - Full-width or contained layout mode (responsive breakpoints, settable per client)
 - JetBrains Mono font
 - Nick colours derived from a hash (consistent across sessions)
@@ -163,7 +174,7 @@ All options have sane defaults; none are required.
 
 ```sh
 wirgloo -addr :8080                  # listen address (default: 0.0.0.0:6677)
-wirgloo -session-timeout 1h          # IRC session survives browser disconnect for this long (default: 30m)
+wirgloo -session-timeout 2h          # IRC session survives browser disconnect for this long (default: 1h)
 wirgloo -buffer-max 1000             # messages buffered per session while browser is disconnected (default: 500)
 wirgloo -list-preview 100            # channels shown in /list before filtering (default: 50)
 wirgloo -log-level debug             # log level: debug, info, warn, error (default: info)

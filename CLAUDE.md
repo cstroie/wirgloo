@@ -53,13 +53,13 @@ All server-side Go lives in `cmd/wirgloo/` as `package main`:
 
 ### WebSocket message protocol
 
-JSON objects with a `"type"` field. Server → browser types: `caps`, `connected`, `resumed`, `session_expired`, `connect_error`, `disconnected`, `message`, `notice`, `join`, `part`, `nick`, `quit`, `kick`, `mode`, `topic`, `invite`, `names_chunk`, `names_end`, `whois`, `away`, `away_status`, `motd`, `isupport_prefix`, `list_start`, `list_item`, `list_end`, `error`.
+JSON objects with a `"type"` field. Server → browser types: `caps`, `connected`, `resumed`, `session_expired`, `connect_error`, `disconnected`, `message`, `notice`, `join`, `part`, `nick`, `quit`, `kick`, `mode`, `topic`, `invite`, `names_chunk`, `names_end`, `whois`, `away`, `away_status`, `motd`, `isupport_prefix`, `list_start`, `list_item`, `list_end`, `history_start`, `history_end`, `error`.
 
-Browser → server types (dispatched in `handler.go`): `connect`, `disconnect`, `join`, `part`, `message`, `nick`, `raw`.
+Browser → server types (dispatched in `handler.go`): `connect`, `disconnect`, `join`, `part`, `message`, `nick`, `raw`, `list_filter`, `chathistory`.
 
 ### Session lifecycle & reconnection
 
-`Registry` tracks all live sessions by ID. On WebSocket disconnect, `Detach` nulls the WS pointer and starts a 30-minute timer — the IRC connection stays alive. If the browser reconnects within that window (same `?s=<id>` URL param), `Resume` reattaches and flushes the message buffer (capped at 500 entries). After 30 minutes, the session is torn down.
+`Registry` tracks all live sessions by ID. On WebSocket disconnect, `Detach` nulls the WS pointer and starts a timer (`WsReconnectWindow`, default 60 minutes, `-session-timeout` flag) — the IRC connection stays alive. If the browser reconnects within that window (same `?s=<id>` URL param), `Resume` reattaches and flushes the message buffer (capped at 500 entries). After the window elapses, the session is torn down.
 
 `done` is a channel closed once to signal all goroutines for a session to exit. `Close()` closes `done` and the TCP connection.
 

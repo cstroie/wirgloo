@@ -23,7 +23,7 @@ Browser                                  Server
   |                                        |
   |  ... normal IRC interaction ...        |
   |                                        |
-  |  [WebSocket drop]                      |  IRC conn stays alive 30 min
+  |  [WebSocket drop]                      |  IRC conn stays alive 60 min
   |-- GET /ws?session=<id> --------------->|  resume attempt
   |<-- resumed {type,nick,channels,...} ---|  buffered msgs flushed first
   |   OR                                   |
@@ -117,6 +117,25 @@ Send a raw IRC line (used by `/raw` and other slash commands the browser handles
 | `type` | string | yes      | `"raw"`                                |
 | `line` | string | yes      | Full IRC line without trailing CRLF    |
 
+### `chathistory`
+
+Request message history for a target (IRCv3 `draft/chathistory`). No-op when the server did not ACK the capability. The reply arrives as `history_start`, then `message`/`notice` frames with `"history": true`, then `history_end`.
+
+| Field    | Type   | Required | Description                                                        |
+|----------|--------|----------|--------------------------------------------------------------------|
+| `type`   | string | yes      | `"chathistory"`                                                    |
+| `target` | string | yes      | Channel name or nick                                               |
+| `before` | string | no       | RFC3339 timestamp to page backwards from; omit for latest messages |
+
+### `list_filter`
+
+Re-filter the cached `/list` results server-side (no new LIST request is sent to IRC).
+
+| Field  | Type   | Required | Description                          |
+|--------|--------|----------|--------------------------------------|
+| `type` | string | yes      | `"list_filter"`                      |
+| `text` | string | yes      | Filter query; empty for the preview  |
+
 > **Note:** Unknown `type` values are silently ignored by the server.
 
 ---
@@ -140,6 +159,14 @@ Sent after a successful IRC `001` (registration complete).
 
 The browser must save `session` and append it as `?session=<id>` to future WebSocket URLs.
 
+#### `caps`
+
+The IRCv3 capabilities ACKed by the server, sent during CAP negotiation (before `connected`). The browser uses this to decide whether to suppress local echo (`echo-message`) and whether to request history (`draft/chathistory`).
+
+```json
+{ "type": "caps", "caps": ["multi-prefix", "server-time", "echo-message", "sasl"] }
+```
+
 > **Note:** `network` and `servername` are intentionally absent here — they come from `004`/`005` numerics which arrive *after* `001`. The client receives them via the `servername` and `isupport_network` messages shortly after `connected`.
 
 #### `resumed`
@@ -156,13 +183,16 @@ Sent after a successful WebSocket reconnect to an existing session.
   "network": "Libera.Chat",
   "servername": "irc.libera.chat",
   "welcome": "Welcome to ...",
-  "meta": { "software": "...", "created": "...", ... }
+  "meta": { "software": "...", "created": "...", ... },
+  "caps": ["multi-prefix", "server-time", "echo-message"]
 }
 ```
 
+`server` (the original dial address) is also included so the client can preload the right chat logs.
+
 #### `session_expired`
 
-The session ID was not found (server restarted, 30-minute window elapsed).
+The session ID was not found (server restarted, or the reconnect window — 60 minutes by default — elapsed).
 
 ```json
 { "type": "session_expired" }
@@ -259,12 +289,16 @@ Incoming PRIVMSG. `target` is the channel or the client's own nick (for DMs).
   "from": "someone",
   "target": "#channel",
   "text": "hello world",
-  "ts": 1715000000
+  "ts": 1715000000,
+  "history": false
 }
 ```
 
 `text` for `/me` actions is pre-converted to `/me <action>` by the server.
 `ts` is a Unix timestamp (seconds). It comes from the `server-time` IRCv3 tag when present, otherwise `time.Now()`.
+`history` is `true` when the message arrived inside a chathistory batch (playback, not live traffic); the client dedups these against its local log and skips unread/notification side effects.
+
+With `echo-message` active, the client's own messages are echoed back as regular `message` frames (`from` = own nick); for DMs the echoed `target` is the *recipient*, not the client's nick.
 
 #### `notice`
 
@@ -276,8 +310,18 @@ Incoming NOTICE.
   "from": "NickServ",
   "target": "mynick",
   "text": "This nickname is registered.",
-  "ts": 1715000000
+  "ts": 1715000000,
+  "history": false
 }
+```
+
+#### `history_start` / `history_end`
+
+Bracket a chathistory playback batch. All `message`/`notice` frames between them carry `"history": true`.
+
+```json
+{ "type": "history_start", "target": "#channel" }
+{ "type": "history_end", "target": "#channel" }
 ```
 
 #### `join`
@@ -520,3 +564,5 @@ Generic IRC error forwarded to the browser. Sources: `ERR_NICKNAMEINUSE` (433), 
 | `meta`     | object           | Only in `resumed`; mirrors accumulated `server_meta` keys     |
 | `seconds`  | number           | Idle seconds in `whois_data` (field=idle)                     |
 | `count`    | number           | User count in `list_item`                                     |
+| `caps`     | array of strings | ACKed IRCv3 capabilities; in `caps` and `resumed`             |
+| `history`  | boolean          | In `message`/`notice`: chathistory playback, not live traffic |
