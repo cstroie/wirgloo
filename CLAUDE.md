@@ -110,7 +110,7 @@ Binary name: `wirgloo-<os>-<arch>[.exe]`.
 ## Code conventions
 
 - **No framework, no ORM, no generated code.** Keep dependencies minimal — currently only `gorilla/websocket`.
-- **Locking discipline:** `Session.mu` guards all mutable fields. Acquire, copy needed values, release before any I/O or channel send. Never hold `mu` while calling `sendWS` or `writeNow`.
+- **Locking discipline:** `Session.mu` guards all mutable fields. Acquire, copy needed values, release before any I/O or channel send. Never hold `mu` while calling `sendWS` or `writeNow`. `Session.wsMu` serialises WebSocket writes (gorilla/websocket forbids concurrent writers); lock order is `wsMu` before `mu`, never acquire `wsMu` while holding `mu`. `Session.Nick` may be read lock-free only inside `ircLoop` (its sole writer); other goroutines use `CurrentNick()`.
 - **`writeNow` vs `SendIRC`:** Use `writeNow` only for protocol-level messages that must bypass the rate limiter (PONG, internal PING, QUIT, SASL). Everything else goes through `SendIRC` → `sendQ`.
 - **`sendWS`** buffers messages (up to 500) while the WebSocket is detached; it never blocks.
 - Static files in `static/` are plain HTML/CSS/JS — no bundler, no transpiler. Keep it that way.

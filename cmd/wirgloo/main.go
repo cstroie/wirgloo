@@ -16,8 +16,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-
 	"strings"
+	"time"
 
 	wirgloo "github.com/cstroie/wirgloo"
 )
@@ -87,7 +87,14 @@ func main() {
 	}
 
 	L.Info("wirgloo starting", "version", version, "addr", *addr)
-	if err := http.ListenAndServe(*addr, nil); err != nil {
+	// No global Read/WriteTimeout: WebSocket connections are long-lived (the
+	// upgrade hijacks the conn, so these timeouts only protect plain HTTP).
+	srv := &http.Server{
+		Addr:              *addr,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		L.Error("server error", "err", err)
 		os.Exit(1)
 	}

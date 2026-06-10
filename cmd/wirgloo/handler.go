@@ -93,7 +93,7 @@ func wsHandler(reg *Registry) http.HandlerFunc {
 		defer func() {
 			reg.Detach(s)
 			conn.Close()
-			L.Info("client disconnected", "session", s.ID, "nick", s.Nick)
+			L.Info("client disconnected", "session", s.ID, "nick", s.CurrentNick())
 		}()
 
 		for {

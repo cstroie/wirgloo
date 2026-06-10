@@ -68,27 +68,28 @@ type listEntry struct {
 // connection. All fields are protected by mu except ID and done, which are
 // immutable after creation and safe to read without holding the lock.
 type Session struct {
-	ID         string          // unique session identifier, hex-encoded random bytes
-	Nick       string          // current IRC nick, updated on NICK events
-	mu         sync.Mutex      // guards all mutable fields below
-	ws         *websocket.Conn // current WebSocket; nil while detached
-	buf        [][]byte        // JSON messages buffered while ws is nil
-	conn       net.Conn        // underlying IRC TCP connection
-	done       chan struct{}    // closed once to signal all goroutines to exit
-	server     string          // original dial address, e.g. "irc.libera.chat"
-	authMethod string          // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
-	authPass   string          // password for the chosen auth method
-	lastPong   time.Time       // wall time of the most recent PONG received
-	sendQ      chan string      // rate-limited outbound IRC line queue
-	channels   map[string]bool // channels the client is currently joined to
+	ID         string               // unique session identifier, hex-encoded random bytes
+	Nick       string               // current IRC nick; written under mu by ircLoop, read lock-free only within ircLoop — other goroutines use CurrentNick
+	mu         sync.Mutex           // guards all mutable fields below
+	wsMu       sync.Mutex           // serialises writes to ws; lock order: wsMu before mu, never mu before wsMu
+	ws         *websocket.Conn      // current WebSocket; nil while detached
+	buf        [][]byte             // JSON messages buffered while ws is nil
+	conn       net.Conn             // underlying IRC TCP connection
+	done       chan struct{}        // closed once to signal all goroutines to exit
+	server     string               // original dial address, e.g. "irc.libera.chat"
+	authMethod string               // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
+	authPass   string               // password for the chosen auth method
+	lastPong   time.Time            // wall time of the most recent PONG received
+	sendQ      chan string          // rate-limited outbound IRC line queue
+	channels   map[string]bool      // channels the client is currently joined to
 	caps       map[string]bool      // IRCv3 capabilities ACKed by the server
 	capsLS     []string             // capabilities advertised in CAP LS (may span several lines)
 	batches    map[string]batchInfo // open IRCv3 batches keyed by reference tag
-	network    string          // NETWORK= value from 005, e.g. "Libera.Chat"
-	servername string          // server hostname from 004 RPL_MYINFO
-	welcome    string          // trailing text of the 001 welcome numeric
-	meta       map[string]any  // accumulated server metadata sent to the browser
-	listBuf    []listEntry     // accumulated LIST rows, sorted and filtered on demand
+	network    string               // NETWORK= value from 005, e.g. "Libera.Chat"
+	servername string               // server hostname from 004 RPL_MYINFO
+	welcome    string               // trailing text of the 001 welcome numeric
+	meta       map[string]any       // accumulated server metadata sent to the browser
+	listBuf    []listEntry          // accumulated LIST rows, sorted and filtered on demand
 }
 
 // Registry is a thread-safe map of active sessions keyed by session ID.
@@ -124,6 +125,10 @@ func (r *Registry) Resume(id string, ws *websocket.Conn) *Session {
 	if s == nil {
 		return nil
 	}
+	// Hold wsMu across publishing the new socket and flushing the buffer so a
+	// concurrent sendWS (which also takes wsMu to write) cannot interleave a
+	// live message into the flush or write to ws at the same time.
+	s.wsMu.Lock()
 	s.mu.Lock()
 	s.ws = ws
 	pending := s.buf
@@ -136,6 +141,7 @@ func (r *Registry) Resume(id string, ws *websocket.Conn) *Session {
 	for _, data := range pending {
 		ws.WriteMessage(websocket.TextMessage, data)
 	}
+	s.wsMu.Unlock()
 	for _, ch := range channels {
 		s.SendIRC("NAMES " + ch)
 		s.SendIRC("TOPIC " + ch)
@@ -183,6 +189,22 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 	if realname == "" {
 		realname = nick
 	}
+	// A session's done channel and goroutines are single-use: refuse a second
+	// connect on the same session instead of leaking the first connection or
+	// starting goroutines against an already-closed done channel.
+	select {
+	case <-s.done:
+		s.sendWS(map[string]any{"type": "connect_error", "text": "session is closed — reload the page to start a new one"})
+		return fmt.Errorf("session closed")
+	default:
+	}
+	s.mu.Lock()
+	alreadyConnected := s.conn != nil
+	s.mu.Unlock()
+	if alreadyConnected {
+		s.sendWS(map[string]any{"type": "connect_error", "text": "already connected — disconnect first"})
+		return fmt.Errorf("already connected")
+	}
 	L.Info("connecting to IRC", "session", s.ID, "server", server, "port", port, "nick", nick, "tls", useTLS, "noverify", noVerify)
 	conn, err := ircDial(server, port, useTLS, noVerify)
 	if err != nil {
@@ -205,6 +227,9 @@ func (s *Session) Connect(server string, port int, nick, realname string, useTLS
 
 	if err := ircHandshake(conn, nick, nick, realname, serverPass); err != nil {
 		conn.Close()
+		s.mu.Lock()
+		s.conn = nil
+		s.mu.Unlock()
 		L.Error("IRC handshake failed", "session", s.ID, "err", err)
 		s.sendWS(map[string]any{"type": "connect_error", "text": err.Error()})
 		return err
@@ -269,11 +294,20 @@ func (s *Session) writeNow(line string) {
 	}
 }
 
+// CurrentNick returns the session's nick under the lock, for goroutines other
+// than ircLoop (which may read Nick directly, being its only writer).
+func (s *Session) CurrentNick() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Nick
+}
+
 // SendResumed notifies the browser that the WebSocket has been successfully
 // reattached to an existing IRC session, including the current channel list so
 // the client can restore any channels that are missing from its local state.
 func (s *Session) SendResumed() {
 	s.mu.Lock()
+	nick := s.Nick
 	channels := make([]string, 0, len(s.channels))
 	for ch := range s.channels {
 		channels = append(channels, ch)
@@ -288,7 +322,7 @@ func (s *Session) SendResumed() {
 		caps = append(caps, c)
 	}
 	s.mu.Unlock()
-	s.sendWS(map[string]any{"type": "resumed", "nick": s.Nick, "server": server, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta, "caps": caps})
+	s.sendWS(map[string]any{"type": "resumed", "nick": nick, "server": server, "channels": channels, "network": network, "servername": servername, "welcome": welcome, "meta": meta, "caps": caps})
 	s.mu.Lock()
 	delete(s.meta, "admin")
 	s.mu.Unlock()
@@ -359,10 +393,15 @@ func (s *Session) ircLoop(lines <-chan string) {
 					}
 				}
 				if len(req) == 0 {
+					if am == "sasl" {
+						s.warnNoSASL()
+					}
 					s.writeNow("CAP END")
 					continue
 				}
 				s.writeNow("CAP REQ :" + strings.Join(req, " "))
+				// If sasl is wanted but wasn't advertised, the ACK handler
+				// falls through to CAP END and warns there.
 			case "ACK":
 				s.mu.Lock()
 				am := s.authMethod
@@ -378,9 +417,18 @@ func (s *Session) ircLoop(lines <-chan string) {
 				if am == "sasl" && strings.Contains(" "+capList+" ", " sasl ") {
 					s.writeNow("AUTHENTICATE PLAIN")
 				} else {
+					if am == "sasl" {
+						s.warnNoSASL()
+					}
 					s.writeNow("CAP END")
 				}
 			case "NAK":
+				s.mu.Lock()
+				am := s.authMethod
+				s.mu.Unlock()
+				if am == "sasl" {
+					s.warnNoSASL()
+				}
 				s.writeNow("CAP END")
 			}
 
@@ -742,8 +790,8 @@ func (s *Session) ircLoop(lines <-chan string) {
 			s.sendWS(map[string]any{"type": "names_end", "channel": msg.Params[1]})
 
 		case "211", "212", "213", "214", "215", "216", "217", "218", // RPL_STATS*
-			"219",                                                       // RPL_ENDOFSTATS
-			"241", "242", "243", "244", "246", "247", "250":             // RPL_STATS* continued
+			"219",                                           // RPL_ENDOFSTATS
+			"241", "242", "243", "244", "246", "247", "250": // RPL_STATS* continued
 			text := msg.Trailing
 			if text == "" {
 				text = strings.Join(msg.Params[1:], " ")
@@ -918,38 +966,47 @@ func (s *Session) FilterList(query string) {
 }
 
 // Quit sends a QUIT message immediately (bypassing the rate limiter) and
-// closes the IRC connection.
+// closes the IRC connection after a short grace period so the QUIT can flush
+// and the network records the quit reason instead of a connection reset.
 func (s *Session) Quit(reason string) {
 	s.writeNow("QUIT :" + reason)
+	time.Sleep(200 * time.Millisecond)
 	s.Close()
 }
 
 // sendWS serialises v as JSON and writes it to the WebSocket. If the
 // WebSocket is currently detached the message is appended to the session
 // buffer (up to BufferMax entries) so it can be flushed on reconnect.
+// The write happens under wsMu, not mu, so a stalled browser connection
+// never blocks goroutines that only need session state.
 func (s *Session) sendWS(v any) {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.ws == nil {
+	ws := s.ws
+	if ws == nil {
 		if len(s.buf) < BufferMax {
 			s.buf = append(s.buf, data)
 		}
+		s.mu.Unlock()
 		return
 	}
-	s.ws.WriteMessage(websocket.TextMessage, data)
+	s.mu.Unlock()
+	s.wsMu.Lock()
+	ws.WriteMessage(websocket.TextMessage, data)
+	s.wsMu.Unlock()
 }
 
 // pingLoop sends a PING to the server every pingInterval. If a PONG has not
 // been received within pingTimeout of the most recent PING the connection is
-// considered dead and Close is called.
+// considered dead and Close is called. The ticker runs faster than the ping
+// interval so a dead link is detected within ~pingTimeout, not at the next ping.
 func (s *Session) pingLoop() {
-	ticker := time.NewTicker(pingInterval)
+	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
-	pingSent := time.Time{}
+	var pingSent, lastPing time.Time
 	for {
 		select {
 		case <-s.done:
@@ -963,10 +1020,20 @@ func (s *Session) pingLoop() {
 				s.Close()
 				return
 			}
-			s.writeNow("PING :wirgloo")
-			pingSent = time.Now()
+			if time.Since(lastPing) >= pingInterval {
+				s.writeNow("PING :wirgloo")
+				lastPing = time.Now()
+				pingSent = lastPing
+			}
 		}
 	}
+}
+
+// warnNoSASL tells the user that SASL auth was selected but cannot happen,
+// instead of silently connecting unauthenticated.
+func (s *Session) warnNoSASL() {
+	L.Warn("sasl auth selected but server does not support it", "session", s.ID)
+	s.sendWS(map[string]any{"type": "error", "text": "SASL selected but the server does not support it — not authenticated"})
 }
 
 // isHistoryBatch reports whether a batch type carries chat history playback.
@@ -998,6 +1065,10 @@ func (s *Session) ChatHistory(target, before string) {
 		return
 	}
 	if before != "" {
+		if _, err := time.Parse(time.RFC3339Nano, before); err != nil {
+			L.Warn("invalid chathistory timestamp", "session", s.ID, "before", before)
+			return
+		}
 		s.SendIRC(fmt.Sprintf("CHATHISTORY BEFORE %s timestamp=%s %d", target, before, chatHistoryLimit))
 	} else {
 		s.SendIRC(fmt.Sprintf("CHATHISTORY LATEST %s * %d", target, chatHistoryLimit))
