@@ -550,6 +550,13 @@ function applyNetworkSelection(value) {
     else if (net.nick)  $('nick').value = net.nick;
     if (srv.realname)   $('realname').value = srv.realname;
     if (srv.authMethod) { $('auth-method').value = srv.authMethod; setPassFieldVisible(srv.authMethod !== 'none'); }
+    // Preview the server's saved palette instantly. applyPalette does not
+    // touch wirgloo:cfg:palette, so this is not remembered unless the user
+    // actually connects and changes it.
+    applyPalette(srv.palette || localStorage.getItem('wirgloo:cfg:palette') || 'default');
+  } else {
+    // custom/unknown server — fall back to the global default palette
+    applyPalette(localStorage.getItem('wirgloo:cfg:palette') || 'default');
   }
 }
 
