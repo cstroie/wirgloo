@@ -549,7 +549,7 @@ function applyNetworkSelection(value) {
     if (srv.nick)       $('nick').value = srv.nick;
     else if (net.nick)  $('nick').value = net.nick;
     if (srv.realname)   $('realname').value = srv.realname;
-    if (srv.authMethod) { $('auth-method').value = srv.authMethod; $('pass-field').classList.toggle('hidden', srv.authMethod === 'none'); }
+    if (srv.authMethod) { $('auth-method').value = srv.authMethod; setPassFieldVisible(srv.authMethod !== 'none'); }
   }
 }
 
@@ -662,7 +662,7 @@ async function restoreChannelsWithHistory(server) {
     const srv = loadSrv(lastServer);
     if (srv.nick)       $('nick').value = srv.nick;
     if (srv.realname)   $('realname').value = srv.realname;
-    if (srv.authMethod) { $('auth-method').value = srv.authMethod; $('pass-field').classList.toggle('hidden', srv.authMethod === 'none'); }
+    if (srv.authMethod) { $('auth-method').value = srv.authMethod; setPassFieldVisible(srv.authMethod !== 'none'); }
     if (srv.noverify)   { $('tls').checked = true; $('tls').dispatchEvent(new Event('change')); $('noverify').checked = true; }
     if (srv.lastNetwork) {
       const sel = $('network');
@@ -693,7 +693,7 @@ async function restoreChannelsWithHistory(server) {
     if (qp.get('noverify') === '1') $('noverify').checked = true;
     if (nick)     $('nick').value = nick;
     if (realname) $('realname').value = realname;
-    if (auth !== 'none') { $('auth-method').value = auth; $('pass-field').classList.remove('hidden'); }
+    if (auth !== 'none') { $('auth-method').value = auth; setPassFieldVisible(true); }
     if (pass)     $('pass').value = pass;
     saveProfile({ server: srv, port, tls, nick });
     renderSavedProfiles();
@@ -718,6 +718,14 @@ async function restoreChannelsWithHistory(server) {
 })();
 
 // ── Connect form ─────────────────────────────────────────────────────────────
+// Show/hide the password field; the password is mandatory whenever an
+// authentication method is selected (passwords are never persisted, so a
+// prefilled form would otherwise silently skip authentication).
+function setPassFieldVisible(show) {
+  $('pass-field').classList.toggle('hidden', !show);
+  $('pass').required = show;
+}
+
 connectForm.addEventListener('submit', e => {
   e.preventDefault();
   const server     = $('server').value.trim();
@@ -729,6 +737,11 @@ connectForm.addEventListener('submit', e => {
   const pass       = $('pass').value;
   const realname   = $('realname').value.trim() || nick;
   if (!server || !nick) return;
+  if (authMethod !== 'none' && !pass) {
+    showConnectError('Password is required for the selected authentication method');
+    $('pass').focus();
+    return;
+  }
   const netVal = $('network').value;
   saveSrv(server, { nick, realname: $('realname').value.trim() || nick, authMethod, noverify, lastNetwork: netVal });
   if (netVal === 'custom' || netVal.startsWith('saved:')) {
@@ -761,7 +774,7 @@ $('tls').addEventListener('change', function() {
 });
 
 $('auth-method').addEventListener('change', function() {
-  $('pass-field').classList.toggle('hidden', this.value === 'none');
+  setPassFieldVisible(this.value !== 'none');
 });
 
 function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
