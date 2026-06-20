@@ -513,13 +513,13 @@ func (s *Session) ircLoop(lines <-chan string) {
 				}
 			case "cservice":
 				if ap != "" {
-					// ap is "csuser cspass" — split on first space
-					csuser, cspass, _ := strings.Cut(ap, " ")
-					if csuser != "" && cspass != "" {
-						s.SendIRC("PRIVMSG x@channels.undernet.org :LOGIN " + csuser + " " + cspass)
+					// ap is "csuser cspass" — split on whitespace
+					parts := strings.Fields(ap)
+					if len(parts) >= 2 {
+						s.SendIRC("PRIVMSG x@channels.undernet.org :LOGIN " + parts[0] + " " + strings.Join(parts[1:], " "))
 					} else {
 						L.Warn("cservice auth: expected 'username password'", "session", s.ID)
-						s.sendWS(map[string]any{"type": "error", "text": "CService login failed: credentials must be 'username password'"})
+						s.sendWS(map[string]any{"type": "error", "text": "CService login failed: enter credentials as 'username password'"})
 					}
 				}
 			}

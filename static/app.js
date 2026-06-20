@@ -549,7 +549,7 @@ function applyNetworkSelection(value) {
     if (srv.nick)       $('nick').value = srv.nick;
     else if (net.nick)  $('nick').value = net.nick;
     if (srv.realname)   $('realname').value = srv.realname;
-    if (srv.authMethod) { $('auth-method').value = srv.authMethod; setPassFieldVisible(srv.authMethod !== 'none'); }
+    if (srv.authMethod) setAuthMethod(srv.authMethod);
     // Preview the server's saved palette instantly. applyPalette does not
     // touch wirgloo:cfg:palette, so this is not remembered unless the user
     // actually connects and changes it.
@@ -669,7 +669,7 @@ async function restoreChannelsWithHistory(server) {
     const srv = loadSrv(lastServer);
     if (srv.nick)       $('nick').value = srv.nick;
     if (srv.realname)   $('realname').value = srv.realname;
-    if (srv.authMethod) { $('auth-method').value = srv.authMethod; setPassFieldVisible(srv.authMethod !== 'none'); }
+    if (srv.authMethod) setAuthMethod(srv.authMethod);
     if (srv.noverify)   { $('tls').checked = true; $('tls').dispatchEvent(new Event('change')); $('noverify').checked = true; }
     if (srv.lastNetwork) {
       const sel = $('network');
@@ -700,7 +700,7 @@ async function restoreChannelsWithHistory(server) {
     if (qp.get('noverify') === '1') $('noverify').checked = true;
     if (nick)     $('nick').value = nick;
     if (realname) $('realname').value = realname;
-    if (auth !== 'none') { $('auth-method').value = auth; setPassFieldVisible(true); }
+    if (auth !== 'none') setAuthMethod(auth);
     if (pass)     $('pass').value = pass;
     saveProfile({ server: srv, port, tls, nick });
     renderSavedProfiles();
@@ -785,12 +785,14 @@ $('tls').addEventListener('change', function() {
   if (!this.checked) $('noverify').checked = false;
 });
 
-$('auth-method').addEventListener('change', function() {
-  setPassFieldVisible(this.value !== 'none');
-  const isCService = this.value === 'cservice';
+function setAuthMethod(val) {
+  $('auth-method').value = val;
+  setPassFieldVisible(val !== 'none');
+  const isCService = val === 'cservice';
   $('pass-field').querySelector('label').textContent = isCService ? 'CService credentials' : 'Password';
   $('pass').placeholder = isCService ? 'username password' : 'password';
-});
+}
+$('auth-method').addEventListener('change', function() { setAuthMethod(this.value); });
 
 function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
   // close any existing socket before opening a new one
