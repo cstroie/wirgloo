@@ -77,7 +77,7 @@ type Session struct {
 	conn       net.Conn             // underlying IRC TCP connection
 	done       chan struct{}        // closed once to signal all goroutines to exit
 	server     string               // original dial address, e.g. "irc.libera.chat"
-	authMethod string               // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server"
+	authMethod string               // "none" | "sasl" | "nickserv" | "nickserv_cmd" | "server" | "cservice"
 	authPass   string               // password for the chosen auth method
 	lastPong   time.Time            // wall time of the most recent PONG received
 	sendQ      chan string          // rate-limited outbound IRC line queue
@@ -183,6 +183,7 @@ func (r *Registry) Remove(id string) {
 // the read and ping goroutines. authMethod controls how pass is used:
 // "sasl" → SASL PLAIN CAP negotiation; "nickserv" → PRIVMSG NickServ :IDENTIFY;
 // "nickserv_cmd" → NICKSERV IDENTIFY; "server" → PASS command in handshake;
+// "cservice" → PRIVMSG x@channels.undernet.org :LOGIN user pass (Undernet X bot);
 // "none" or empty → no authentication. Connect returns once the TCP connection
 // and handshake succeed; the 001 numeric arrives asynchronously via ircLoop.
 func (s *Session) Connect(server string, port int, nick, realname string, useTLS, noVerify bool, pass, authMethod string) error {
@@ -510,6 +511,17 @@ func (s *Session) ircLoop(lines <-chan string) {
 				if ap != "" {
 					s.SendIRC("NICKSERV IDENTIFY " + ap)
 				}
+			case "cservice":
+				if ap != "" {
+					// ap is "csuser cspass" — split on first space
+					csuser, cspass, _ := strings.Cut(ap, " ")
+					if csuser != "" && cspass != "" {
+						s.SendIRC("PRIVMSG x@channels.undernet.org :LOGIN " + csuser + " " + cspass)
+					} else {
+						L.Warn("cservice auth: expected 'username password'", "session", s.ID)
+						s.sendWS(map[string]any{"type": "error", "text": "CService login failed: credentials must be 'username password'"})
+					}
+				}
 			}
 			// A NickServ auth method with no password (e.g. connect form
 			// prefilled from a saved profile, which never stores passwords)
@@ -517,6 +529,10 @@ func (s *Session) ircLoop(lines <-chan string) {
 			if (am == "nickserv" || am == "nickserv_cmd") && ap == "" {
 				L.Warn("nickserv auth selected but no password given", "session", s.ID)
 				s.sendWS(map[string]any{"type": "error", "text": "NickServ auth selected but no password was entered — not identified"})
+			}
+			if am == "cservice" && ap == "" {
+				L.Warn("cservice auth selected but no credentials given", "session", s.ID)
+				s.sendWS(map[string]any{"type": "error", "text": "CService auth selected but no credentials were entered — not logged in"})
 			}
 			s.sendWS(map[string]any{"type": "connected", "nick": s.Nick, "session": s.ID, "welcome": msg.Trailing})
 			s.SendIRC("ADMIN")

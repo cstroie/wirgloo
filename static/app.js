@@ -749,6 +749,11 @@ connectForm.addEventListener('submit', e => {
     $('pass').focus();
     return;
   }
+  if (authMethod === 'cservice' && pass.trim().split(/\s+/).length < 2) {
+    showConnectError('CService requires both username and password separated by a space');
+    $('pass').focus();
+    return;
+  }
   const netVal = $('network').value;
   saveSrv(server, { nick, realname: $('realname').value.trim() || nick, authMethod, noverify, lastNetwork: netVal });
   if (netVal === 'custom' || netVal.startsWith('saved:')) {
@@ -782,6 +787,9 @@ $('tls').addEventListener('change', function() {
 
 $('auth-method').addEventListener('change', function() {
   setPassFieldVisible(this.value !== 'none');
+  const isCService = this.value === 'cservice';
+  $('pass-field').querySelector('label').textContent = isCService ? 'CService credentials' : 'Password';
+  $('pass').placeholder = isCService ? 'username password' : 'password';
 });
 
 function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
@@ -1334,6 +1342,10 @@ function updateTargetName(target) {
 
 function setActive(target) {
   if (!target || !state.channels.has(target)) return;
+  if (state.active && state.channels.has(state.active)) {
+    const leaving = state.channels.get(state.active);
+    leaving.scrollTop = messages.scrollTop;
+  }
   openPanel((isDM(target) || target === '*server*') ? 'userlist' : null);
   state.active = target;
   state.dmOriginChannel = null;
@@ -1541,6 +1553,7 @@ const SYSTEM_TYPES = new Set(['system', 'join', 'part', 'quit', 'error', 'connec
 function renderMessages(target) {
   if (target === '*list*') { renderListMessages(); return; }
   const ch = state.channels.get(target);
+  const savedScroll = ch ? ch.scrollTop : undefined;
   userScrolledUp = false;
   messages.innerHTML = '';
   if (!ch) return;
@@ -1550,7 +1563,16 @@ function renderMessages(target) {
     messages.appendChild(buildMsgEl(m, target, grouped));
     prevNick = m.nick || null; prevTs = m.ts || 0; prevType = m.type || 'msg';
   });
-  requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
+  requestAnimationFrame(() => {
+    if (savedScroll !== undefined && savedScroll < messages.scrollHeight - messages.clientHeight - 10) {
+      messages.scrollTop = savedScroll;
+      if (messages.scrollTop < messages.scrollHeight - messages.clientHeight - 60) {
+        userScrolledUp = true;
+      }
+    } else {
+      messages.scrollTop = messages.scrollHeight;
+    }
+  });
 }
 
 // isDuplicateMsg reports whether an identical message (same author, text and
@@ -1911,6 +1933,9 @@ messages.addEventListener('scroll', () => {
 scrollBottomBtn.addEventListener('click', () => {
   userScrolledUp = false;
   messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
+  if (state.active && state.channels.has(state.active)) {
+    state.channels.get(state.active).scrollTop = undefined;
+  }
 });
 $('sidebar-toggle').addEventListener('click', () => {
   const isOpen = document.getElementById('sidebar').classList.contains('open');
@@ -2183,6 +2208,17 @@ function handleCommand(raw) {
         appendMsg(state.active, { type: 'system', nick: '--', text: `No longer ignoring ${arg}` });
       }
       break;
+    case 'CS':
+    case 'CSERVICE': {
+      const [csop, csuser, cspass] = arg.split(/\s+/, 3);
+      if (!csop || !csuser || !cspass) {
+        appendMsg(state.active, { type: 'error', nick: '!', text: 'Usage: /cs login <username> <password>' });
+        break;
+      }
+      send({ type: 'raw', line: `PRIVMSG x@channels.undernet.org :${csop.toUpperCase()} ${csuser} ${cspass}` });
+      appendMsg(state.active, { type: 'system', nick: '--', text: `CService: sent ${csop.toUpperCase()} for ${csuser}` });
+      break;
+    }
     case 'STATS':
       send({ type: 'raw', line: arg ? `STATS ${arg}` : 'STATS' });
       break;
@@ -2216,6 +2252,7 @@ function handleCommand(raw) {
         '/clear                  — clear message buffer',
         '/stats [query]          — query server statistics (u=uptime, l=links, m=commands…)',
         '/oper <user> <pass>     — authenticate as IRC operator',
+        '/cs login <user> <pass> — CService (Undernet X bot) login  (/cservice)',
         '/raw <line>             — send raw IRC line  (/q, /quote)',
         '/help                   — show this list',
       ];
