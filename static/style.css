@@ -1294,6 +1294,15 @@ textarea.settings-input { resize: vertical; line-height: 1.5; }
 .session-break::before, .session-break::after {
   content: ''; flex: 1; height: 1px; background: var(--border);
 }
+.reconnect-gap {
+  text-align: center; color: var(--text-dim); font-size: 0.72rem; font-style: italic;
+  padding: 6px 0; user-select: none;
+  display: flex; align-items: center; gap: 10px;
+}
+.reconnect-gap::before, .reconnect-gap::after {
+  content: ''; flex: 1; height: 1px;
+  background: repeating-linear-gradient(90deg, var(--border) 0, var(--border) 4px, transparent 4px, transparent 8px);
+}
 
 .hidden { display: none !important; }
 

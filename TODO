@@ -45,7 +45,7 @@
 ### Polish / correctness
 - [x] userhost-in-names CAP — get nick!user@host from NAMES without WHOIS
 - [X] Configurable highlight words beyond own nick
-- [ ] Reconnect indicator — show how long disconnected so you know missed history gap
+- [x] Reconnect indicator — show how long disconnected so you know missed history gap
 - [x] /ignore persisted across sessions (wirgloo_ignored in localStorage)
 
 ### UX

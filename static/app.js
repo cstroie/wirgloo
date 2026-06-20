@@ -482,8 +482,10 @@ function loadLog(server, target) {
     ws.onerror = () => {};
     ws.onclose = () => {
       restoreScreen.classList.add('hidden');
-      if (state.sessionId || state.connectParams) scheduleReconnect();
-      else connectScreen.classList.remove('hidden');
+      if (state.sessionId || state.connectParams) {
+        if (!state.disconnectTime) state.disconnectTime = Date.now();
+        scheduleReconnect();
+      } else connectScreen.classList.remove('hidden');
     };
   }
 }
@@ -829,8 +831,10 @@ function openWS(server, port, nick, realname, tls, noverify, authMethod, pass) {
 
   ws.onerror = () => {};
   ws.onclose = () => {
-    if (state.sessionId) scheduleReconnect();
-    else if (state.connected) onDisconnect('Connection lost');
+    if (state.sessionId) {
+      if (!state.disconnectTime) state.disconnectTime = Date.now();
+      scheduleReconnect();
+    } else if (state.connected) onDisconnect('Connection lost');
     else onConnectFailed('Connection closed');
   };
 }
@@ -939,6 +943,11 @@ function handle(msg) {
         }
         // re-join channels that were active before a session_expired reconnect
         if (wasReconnect) {
+          if (state.disconnectTime) {
+            const label = fmtIdle(Math.round((Date.now() - state.disconnectTime) / 1000));
+            appendMsg('*server*', { type: 'reconnect-gap', nick: '--', text: `Reconnected — ${label} offline`, ts: Date.now() / 1000 });
+            state.disconnectTime = null;
+          }
           state.channels.forEach((ch, target) => {
             if (target.startsWith('#') && !ch.offline) {
               ch.nicks = new Map();
@@ -990,7 +999,16 @@ function handle(msg) {
         setActive('*server*');
         restoreScreen.classList.add('hidden');
         chatScreen.classList.remove('hidden');
-        appendMsg('*server*', { type: 'system', nick: '--', text: 'Session restored' });
+        if (state.disconnectTime) {
+          const label = fmtIdle(Math.round((Date.now() - state.disconnectTime) / 1000));
+          state.channels.forEach((_, target) => {
+            if (target !== '*list*')
+              appendMsg(target, { type: 'reconnect-gap', nick: '--', text: `Reconnected — ${label} offline`, ts: Date.now() / 1000 });
+          });
+          state.disconnectTime = null;
+        } else {
+          appendMsg('*server*', { type: 'system', nick: '--', text: 'Session restored' });
+        }
       });
       break;
     }
@@ -1649,6 +1667,12 @@ function buildMsgEl(m, target, grouped = false) {
   if (cls === 'session-break') {
     el.className = 'session-break';
     el.textContent = '── previous session ──';
+    return el;
+  }
+
+  if (cls === 'reconnect-gap') {
+    el.className = 'reconnect-gap';
+    el.textContent = m.text;
     return el;
   }
 
@@ -2442,6 +2466,7 @@ function onDisconnect(reason) {
   autoAwayActive = false;
   updateLagDisplay(null);
   state.connected = false;
+  state.disconnectTime = null;
   state.sessionId = null;
   history.replaceState(null, '', location.pathname);
   state.channels.clear();
