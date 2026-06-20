@@ -113,6 +113,14 @@ Each channel object carries a `scrollTop` field (number | undefined). `setActive
 
 After the `connected` event fires and `preloadLogs` resolves, auto-commands from `wirgloo:cfg:autocommands` are executed with a 1.5 s initial delay and 1.2 s between each. `{nick}` is replaced with `state.nick` at fire time. Lines starting with `/` go through `handleCommand()`; others are sent as `{ type: 'raw', line }`. Auto-commands only fire on fresh connects (inside the `preloadLogs` callback inside `case 'connected'`), not on WebSocket resume (`case 'resumed'`).
 
+### Sidebar header identity
+
+`#header-identity` (between `#conn-dot` and `.header-btns`) shows the current network name via `updateHeaderIdentity()`. It is called from `setMyNick()` and `applyServerMeta()` (when ISUPPORT arrives) and cleared in `onDisconnect()`. Falls back to `state.servername` then `state.server` until the network name is known.
+
+### Reconnect gap marker
+
+`state.disconnectTime` is set to `Date.now()` on the *first* WebSocket `onclose` that triggers a reconnect attempt (guarded with `if (!state.disconnectTime)` so retries don't reset it). On `'resumed'`, a `{ type: 'reconnect-gap' }` message is appended to every channel (except `*list*`) showing the offline duration. On `'connected'` with `wasReconnect`, it is appended to `*server*` only. `state.disconnectTime` is cleared to `null` in `onDisconnect()` (explicit disconnect) and after inserting the marker. `fmtIdle()` is reused for duration formatting. The `.reconnect-gap` CSS class renders as a centered italic label with dashed pseudo-element lines on each side.
+
 ### Releases & cross-platform builds
 
 Tag format: `vYYMMDD` (e.g. `v260526`). `make dist` builds for all five platforms; Linux targets use `CGO_ENABLED=0` for static linking (works on Alpine/musl and any glibc). GitHub Actions (`.github/workflows/release.yml`) runs on each tag push and uploads all binaries to the GitHub release automatically.

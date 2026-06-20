@@ -41,7 +41,7 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - TLS and plain IRC, optional certificate verification bypass (for self-signed certs)
 - Predefined network presets: Libera.Chat, OFTC, Rizon, EFnet, QuakeNet, DALnet, Undernet, IRCnet, GeekShed, RadioChat, SDF
 - Custom server profiles saved to browser localStorage; network name (from server 005) stored after first connect and shown in the dropdown
-- WebSocket reconnection with exponential backoff — IRC session survives brief network drops
+- WebSocket reconnection with exponential backoff — IRC session survives brief network drops; a dashed gap marker is inserted in each channel showing the offline duration on resume
 - Transparent reconnect after server restart: channels re-joined, messages preserved
 - Offline channel placeholders in the sidebar — click to rejoin
 
@@ -85,7 +85,7 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - Click any entry to join directly
 
 **Commands**
-`/join` `/part` `/msg` `/me` `/nick` `/topic` `/kick` `/ban` `/mode` `/umode`
+`/join` `/part` `/rejoin` `/msg` `/me` `/nick` `/topic` `/kick` `/ban` `/mode` `/umode`
 `/invite` `/notice` `/whois` `/ping` `/slap` `/ignore` `/unignore`
 `/list` `/clear` `/help` `/raw` `/cs` (`/cservice`)
 
@@ -98,6 +98,8 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - Rate-limited outbound IRC (token bucket, 3 lines/sec)
 - Scroll position preserved per channel when switching tabs
 - Auto-commands: run IRC commands automatically after connect (Settings panel, one per line, `{nick}` placeholder supported)
+- Network name shown in the sidebar header for at-a-glance orientation
+- Reconnect gap marker — dashed divider inserted in each channel showing how long you were offline
 
 ---
 
