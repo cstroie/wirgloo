@@ -225,6 +225,9 @@ function applyMarkdownSetting(enabled) {
   const logInput = document.getElementById('log-max');
   if (logInput) logInput.value = logMax;
 
+  const autocmdEl = document.getElementById('autocommands');
+  if (autocmdEl) autocmdEl.value = localStorage.getItem('wirgloo:cfg:autocommands') || '';
+
   document.addEventListener('input', e => {
     if (e.target.id === 'palette-select') {
       applyPalette(e.target.value);
@@ -244,6 +247,8 @@ function applyMarkdownSetting(enabled) {
       logMax = v;
       localStorage.setItem('wirgloo:cfg:logmax', v);
       trimAllCaches();
+    } else if (e.target.id === 'autocommands') {
+      localStorage.setItem('wirgloo:cfg:autocommands', e.target.value);
     }
   });
 
@@ -934,6 +939,16 @@ function handle(msg) {
             }
           });
         }
+        // auto-commands
+        const autoCmds = (localStorage.getItem('wirgloo:cfg:autocommands') || '')
+          .split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        autoCmds.forEach((cmd, i) => {
+          setTimeout(() => {
+            const line = cmd.replace(/\{nick\}/g, state.nick);
+            if (line.startsWith('/')) handleCommand(line.slice(1));
+            else send({ type: 'raw', line });
+          }, 1500 + i * 1200);
+        });
       });
       break;
     }
@@ -2210,6 +2225,10 @@ function handleCommand(raw) {
         appendMsg(state.active, { type: 'system', nick: '--', text: `No longer ignoring ${arg}` });
       }
       break;
+    case 'UMODE':
+      if (arg) send({ type: 'raw', line: `MODE ${state.nick} ${arg}` });
+      else appendMsg(state.active, { type: 'error', nick: '!', text: 'Usage: /umode <modes>  (e.g. /umode +x)' });
+      break;
     case 'CS':
     case 'CSERVICE': {
       const [csop, csuser, cspass] = arg.split(/\s+/, 3);
@@ -2254,6 +2273,7 @@ function handleCommand(raw) {
         '/clear                  — clear message buffer',
         '/stats [query]          — query server statistics (u=uptime, l=links, m=commands…)',
         '/oper <user> <pass>     — authenticate as IRC operator',
+        '/umode <modes>          — set your own user modes (e.g. /umode +x to hide IP)',
         '/cs login <user> <pass> — CService (Undernet X bot) login  (/cservice)',
         '/raw <line>             — send raw IRC line  (/q, /quote)',
         '/help                   — show this list',

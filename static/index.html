@@ -223,6 +223,12 @@
             <label class="settings-label" for="autoaway-mins">Auto-away (minutes, 0 = off)</label>
             <input type="number" id="autoaway-mins" class="settings-input" min="0" max="120" step="1" value="5">
           </div>
+
+          <span class="settings-section">Auto-commands</span>
+          <div class="settings-group">
+            <label class="settings-label" for="autocommands">Run after connect <span class="field-optional">— one per line, <code>{nick}</code> = your nick</span></label>
+            <textarea id="autocommands" class="settings-input" rows="4" placeholder="/umode +x&#10;/msg NickServ identify mypassword" autocomplete="off" spellcheck="false"></textarea>
+          </div>
           </section>
         </aside>
       </div>
