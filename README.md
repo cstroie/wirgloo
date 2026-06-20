@@ -57,6 +57,7 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - SASL PLAIN (full CAP negotiation)
 - NickServ IDENTIFY (PRIVMSG and NICKSERV command variants)
 - Server password (PASS)
+- CService / Undernet X bot (`LOGIN` sent to `x@channels.undernet.org` after connect)
 - A visible warning when the chosen auth method cannot run (no password given, or SASL not offered by the server) — never a silent skip
 
 **Channels & messaging**
@@ -84,9 +85,9 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - Click any entry to join directly
 
 **Commands**
-`/join` `/part` `/msg` `/me` `/nick` `/topic` `/kick` `/ban` `/mode`
+`/join` `/part` `/msg` `/me` `/nick` `/topic` `/kick` `/ban` `/mode` `/umode`
 `/invite` `/notice` `/whois` `/ping` `/slap` `/ignore` `/unignore`
-`/list` `/clear` `/help` `/raw`
+`/list` `/clear` `/help` `/raw` `/cs` (`/cservice`)
 
 **UI**
 - Auto light/dark theme via `prefers-color-scheme`
@@ -95,6 +96,8 @@ Most web IRC clients require a stack: a Node process, a database, a reverse prox
 - JetBrains Mono font
 - Nick colours derived from a hash (consistent across sessions)
 - Rate-limited outbound IRC (token bucket, 3 lines/sec)
+- Scroll position preserved per channel when switching tabs
+- Auto-commands: run IRC commands automatically after connect (Settings panel, one per line, `{nick}` placeholder supported)
 
 ---
 
@@ -198,8 +201,8 @@ http://localhost:6677/?server=irc.libera.chat&tls=1&nick=mynick&channel=%23linux
 | `noverify` | Skip TLS cert verification — `1`                  | `false`           |
 | `nick`     | Default nick                                      | —                 |
 | `realname` | Real name / GECOS                                 | same as nick      |
-| `auth`     | Auth method: `none`, `sasl`, `nickserv`, `ns-msg` | `none`            |
-| `pass`     | Password for the chosen auth method               | —                 |
+| `auth`     | Auth method: `none`, `sasl`, `nickserv`, `nickserv_cmd`, `server`, `cservice` | `none` |
+| `pass`     | Password (or `username password` for `cservice`)  | —                 |
 | `channel`  | Channel to join after connecting                  | —                 |
 
 The profile is saved to localStorage on load. A `?s=` session-restore parameter takes priority over all other URL parameters.

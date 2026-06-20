@@ -70,6 +70,7 @@ Browser → server types (dispatched in `handler.go`): `connect`, `disconnect`, 
 | `wirgloo:profiles` | localStorage | saved connection profiles |
 | `wirgloo:srv:<server>` | localStorage | per-server state: nick, channels, DMs, ignored nicks, auth prefs |
 | `wirgloo:srv:last` | localStorage | last-used server/network/TLS (connect form pre-fill only) |
+| `wirgloo:cfg:autocommands` | localStorage | auto-commands textarea value (newline-separated IRC commands run after connect) |
 | `wirgloo` (IndexedDB) | IndexedDB | chat log messages, object store `messages`, index `by_target` on `[server, target]` |
 
 Chat logs use IndexedDB (`getDB()` / `persistMsg()` / `preloadLogs(server)`). On session resume or fresh connect, `preloadLogs(server)` loads up to 500 messages per channel into `msgCache` (in-memory Map) so `loadLog()` stays synchronous. `persistMsg()` writes to IndexedDB asynchronously (fire and forget) and updates `msgCache` immediately.
@@ -84,7 +85,9 @@ Capability negotiation uses `CAP LS 302`: the handshake sends `CAP LS 302`, the 
 
 ### Auth flow
 
-Auth method is chosen at connect time and held in `Session.authMethod`/`authPass`. SASL PLAIN uses full CAP negotiation (`CAP REQ` → `CAP ACK` → `AUTHENTICATE PLAIN` → base64 payload → `903` → `CAP END`). NickServ variants fire after `001`. Server password goes in the `PASS` command during handshake.
+Auth method is chosen at connect time and held in `Session.authMethod`/`authPass`. SASL PLAIN uses full CAP negotiation (`CAP REQ` → `CAP ACK` → `AUTHENTICATE PLAIN` → base64 payload → `903` → `CAP END`). NickServ variants fire after `001`. Server password goes in the `PASS` command during handshake. CService (`"cservice"`) sends `PRIVMSG x@channels.undernet.org :LOGIN <user> <pass>` after `001`; `authPass` is stored as `"username password"` (two space-separated tokens) and split with `strings.Fields` at auth time.
+
+When `authMethod` is restored from localStorage on page load, `setAuthMethod(val)` must be called instead of setting the dropdown value directly — it also updates the password field label and placeholder (critical for CService, which shows "CService credentials" and `username password` hint).
 
 ### Version
 
@@ -100,6 +103,15 @@ Auth method is chosen at connect time and held in `Session.authMethod`/`authPass
 - CSS variables: `--text` (normal), `--text-dim` (secondary/muted), `--text-head` (labels/headings), `--accent` (highlights).
 - Message list: no padding/gap on `#messages`; reduced per-message padding for tight spacing.
 - `logMax` (default 500) caps both IndexedDB writes (trimmed per channel on each write) and the DOM message list (trimmed on append). Setting changes apply immediately via `enforceLogMax()`.
+- Settings textareas use class `settings-input` (same as text inputs) plus `textarea.settings-input { resize: vertical; }` in style.css.
+
+### Scroll position
+
+Each channel object carries a `scrollTop` field (number | undefined). `setActive()` saves `messages.scrollTop` to the leaving channel before switching; `renderMessages()` restores it on re-entry (falling back to scroll-to-bottom when undefined or already at bottom). The scroll-to-bottom button clears `ch.scrollTop` to `undefined`. `userScrolledUp` is set to `true` when a non-bottom scroll is restored, so new arriving messages don't auto-scroll the user back down.
+
+### Auto-commands
+
+After the `connected` event fires and `preloadLogs` resolves, auto-commands from `wirgloo:cfg:autocommands` are executed with a 1.5 s initial delay and 1.2 s between each. `{nick}` is replaced with `state.nick` at fire time. Lines starting with `/` go through `handleCommand()`; others are sent as `{ type: 'raw', line }`. Auto-commands only fire on fresh connects (inside the `preloadLogs` callback inside `case 'connected'`), not on WebSocket resume (`case 'resumed'`).
 
 ### Releases & cross-platform builds
 
