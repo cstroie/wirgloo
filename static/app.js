@@ -344,8 +344,7 @@ function updateHeaderIdentity() {
   const el = $('header-identity');
   if (!el) return;
   if (!state.connected) { el.textContent = ''; return; }
-  const net = state.network || state.servername || state.server || '';
-  el.textContent = net ? `${state.nick} · ${net}` : state.nick;
+  el.textContent = state.network || state.servername || state.server || '';
 }
 function setMyNick(nick) {
   myNick.textContent = nick;
