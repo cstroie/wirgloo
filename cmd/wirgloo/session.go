@@ -513,14 +513,13 @@ func (s *Session) ircLoop(lines <-chan string) {
 				}
 			case "cservice":
 				if ap != "" {
-					// ap is "csuser cspass" — split on whitespace
+					// ap is either "password" (nick used as username) or "csuser password"
 					parts := strings.Fields(ap)
+					csuser, cspass := s.Nick, parts[0]
 					if len(parts) >= 2 {
-						s.SendIRC("PRIVMSG x@channels.undernet.org :LOGIN " + parts[0] + " " + strings.Join(parts[1:], " "))
-					} else {
-						L.Warn("cservice auth: expected 'username password'", "session", s.ID)
-						s.sendWS(map[string]any{"type": "error", "text": "CService login failed: enter credentials as 'username password'"})
+						csuser, cspass = parts[0], strings.Join(parts[1:], " ")
 					}
+					s.SendIRC("PRIVMSG x@channels.undernet.org :LOGIN " + csuser + " " + cspass)
 				}
 			}
 			// A NickServ auth method with no password (e.g. connect form

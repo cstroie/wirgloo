@@ -763,11 +763,6 @@ connectForm.addEventListener('submit', e => {
     $('pass').focus();
     return;
   }
-  if (authMethod === 'cservice' && pass.trim().split(/\s+/).length < 2) {
-    showConnectError('CService requires both username and password separated by a space');
-    $('pass').focus();
-    return;
-  }
   const netVal = $('network').value;
   saveSrv(server, { nick, realname: $('realname').value.trim() || nick, authMethod, noverify, lastNetwork: netVal });
   if (netVal === 'custom' || netVal.startsWith('saved:')) {
@@ -804,7 +799,7 @@ function setAuthMethod(val) {
   setPassFieldVisible(val !== 'none');
   const isCService = val === 'cservice';
   $('pass-field').querySelector('label').textContent = isCService ? 'CService credentials' : 'Password';
-  $('pass').placeholder = isCService ? 'username password' : 'password';
+  $('pass').placeholder = isCService ? 'password (or: username password)' : 'password';
 }
 $('auth-method').addEventListener('change', function() { setAuthMethod(this.value); });
 

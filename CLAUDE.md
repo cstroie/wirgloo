@@ -85,7 +85,7 @@ Capability negotiation uses `CAP LS 302`: the handshake sends `CAP LS 302`, the 
 
 ### Auth flow
 
-Auth method is chosen at connect time and held in `Session.authMethod`/`authPass`. SASL PLAIN uses full CAP negotiation (`CAP REQ` → `CAP ACK` → `AUTHENTICATE PLAIN` → base64 payload → `903` → `CAP END`). NickServ variants fire after `001`. Server password goes in the `PASS` command during handshake. CService (`"cservice"`) sends `PRIVMSG x@channels.undernet.org :LOGIN <user> <pass>` after `001`; `authPass` is stored as `"username password"` (two space-separated tokens) and split with `strings.Fields` at auth time.
+Auth method is chosen at connect time and held in `Session.authMethod`/`authPass`. SASL PLAIN uses full CAP negotiation (`CAP REQ` → `CAP ACK` → `AUTHENTICATE PLAIN` → base64 payload → `903` → `CAP END`). NickServ variants fire after `001`. Server password goes in the `PASS` command during handshake. CService (`"cservice"`) sends `PRIVMSG x@channels.undernet.org :LOGIN <user> <pass>` after `001`; `authPass` is either `"password"` (single token — IRC nick is used as the X username) or `"username password"` (two tokens — explicit X username). Split with `strings.Fields` at auth time.
 
 When `authMethod` is restored from localStorage on page load, `setAuthMethod(val)` must be called instead of setting the dropdown value directly — it also updates the password field label and placeholder (critical for CService, which shows "CService credentials" and `username password` hint).
 
