@@ -880,6 +880,7 @@ html[data-font="large"]  { --font-size: 16px; }
 #theme-btn:hover, #settings-btn:hover { color: var(--text); background: var(--bg3); }
 #settings-btn.active { color: var(--accent); }
 #sidebar-header .header-btns { display: flex; gap: 2px; flex-shrink: 0; }
+#header-identity { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; color: var(--text-dim); padding: 0 8px; }
 
 .conn-dot {
   width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;

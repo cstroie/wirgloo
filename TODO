@@ -80,5 +80,5 @@
  - [ ] Add a spinner near the channel name, left panel, while the content is still reloading
  - [x] Add support for the system managed by the X bot (CService): /msg x@channels.undernet.org login your_username your_password
  - [x] Add support for hiding IP address: /mode your_nickname +x
- - [ ] Write something in 'sidebar-header', after 'conn-dot': program name, nickname, server name? (all of them already displayed)
+ - [x] Write something in 'sidebar-header', after 'conn-dot': program name, nickname, server name? (all of them already displayed)
  - [x] When reentering a channel, do not scroll. Stay where the user was when the channel was left.

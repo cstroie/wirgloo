@@ -340,9 +340,17 @@ const chatScreen     = $('chat-screen');
 const connectForm   = $('connect-form');
 const connectError  = $('connect-error');
 const myNick        = $('my-nick');
+function updateHeaderIdentity() {
+  const el = $('header-identity');
+  if (!el) return;
+  if (!state.connected) { el.textContent = ''; return; }
+  const net = state.network || state.servername || state.server || '';
+  el.textContent = net ? `${state.nick} · ${net}` : state.nick;
+}
 function setMyNick(nick) {
   myNick.textContent = nick;
   myNick.style.color = nickColor(nick) || '';
+  updateHeaderIdentity();
 }
 const channelList   = $('channel-list');
 const messages      = $('messages');
@@ -1490,6 +1498,7 @@ function notify(target, fromNick, text) {
 function applyServerMeta(network, servername, welcome) {
   if (network)    state.network    = network;
   if (servername) state.servername = servername;
+  updateHeaderIdentity();
   const srv = state.channels.get('*server*');
   if (srv && welcome) srv.topic = welcome;
   if (state.active === '*server*') {
@@ -2439,6 +2448,7 @@ function onDisconnect(reason) {
   state.channels.clear();
   state.active = null;
   document.title = 'wirgloo';
+  updateHeaderIdentity();
   chatScreen.classList.add('hidden');
   connectScreen.classList.remove('hidden');
   showConnectError(reason);
