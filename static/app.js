@@ -2149,6 +2149,17 @@ function handleCommand(raw) {
     case 'PART':
       send({ type: 'part', channel: arg || state.active });
       break;
+    case 'REJOIN': {
+      const rjchan = state.active;
+      if (!rjchan || !rjchan.startsWith('#')) {
+        appendMsg(state.active, { type: 'error', nick: '!', text: '/rejoin only works in a channel' });
+        break;
+      }
+      const rjkey = state.channels.get(rjchan)?.key || '';
+      send({ type: 'part', channel: rjchan });
+      setTimeout(() => send({ type: 'join', channel: rjchan, ...(rjkey ? { key: rjkey } : {}) }), 500);
+      break;
+    }
     case 'NICK':
       send({ type: 'nick', nick: arg });
       break;
@@ -2285,6 +2296,7 @@ function handleCommand(raw) {
       const cmds = [
         '/join <#channel> [key]  — join a channel  (/j)',
         '/part [reason]          — leave current channel  (/p)',
+        '/rejoin                 — part and immediately rejoin current channel',
         '/nick <newnick>         — change nickname',
         '/msg <nick> [text]      — open DM / send message  (/m)',
         '/me <action>            — send action (/me waves)',

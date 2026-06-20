@@ -51,7 +51,7 @@
 ### UX
 - [ ] Unread scroll marker — visual line dividing seen vs new messages
 - [ ] Image/URL inline preview (opt-in)
-- [ ] /rejoin shortcut (part + join, useful after kicks or netsplits)
+- [x] /rejoin shortcut (part + join, useful after kicks or netsplits)
 - [x] Clickable nicks in chat — open DM
 - [X] Implement arrow-up command/messages history (javascript, runtime)
 - [x] Open new connection by specifying directly the parameters in GET URL
