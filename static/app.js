@@ -2555,6 +2555,7 @@ function onDisconnect(reason) {
   updateHeaderIdentity();
   chatScreen.classList.add('hidden');
   connectScreen.classList.remove('hidden');
+  applyNetworkSelection($('network').value);
   showConnectError(reason);
 }
 
