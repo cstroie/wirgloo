@@ -769,6 +769,8 @@ html[data-font="large"]  { --font-size: 16px; }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field label { color: var(--text-head); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; }
+.field-checkbox label { flex-direction: row; align-items: center; gap: 6px; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.field-hint { margin: 2px 0 0; font-size: 0.75rem; color: var(--text-dim); line-height: 1.45; }
 .field input[type=text], .field input[type=number], .field input[type=password],
 .field select {
   background: var(--bg3); border: 1px solid transparent; border-radius: var(--radius);

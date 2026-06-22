@@ -415,6 +415,7 @@ async function preloadLogs(server) {
 
 function persistMsg(target, m) {
   if (!LOG_TYPES.has(m.type)) return;
+  if (!isTrusted()) return;
   const k = msgCacheKey(state.server, target);
   if (!msgCache.has(k)) msgCache.set(k, []);
   const arr = msgCache.get(k);
@@ -516,6 +517,7 @@ function loadProfiles() {
 }
 
 function saveProfile(profile) {
+  if (!isTrusted()) return;
   const profiles = loadProfiles().filter(p => p.server !== profile.server || p.port !== profile.port);
   profiles.unshift(profile);
   localStorage.setItem('wirgloo:profiles', JSON.stringify(profiles));
@@ -612,7 +614,20 @@ function loadSrv(server) {
   catch { return {}; }
 }
 
+function isTrusted() { return localStorage.getItem('wirgloo:cfg:trusted') !== 'false'; }
+
+function clearLocalData() {
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('wirgloo:') && k !== 'wirgloo:cfg:trusted')
+    .forEach(k => localStorage.removeItem(k));
+  msgCache.clear();
+  getDB().then(db => {
+    db.transaction('messages', 'readwrite').objectStore('messages').clear();
+  }).catch(() => {});
+}
+
 function saveSrv(server, patch) {
+  if (!isTrusted()) return;
   const data = loadSrv(server);
   Object.assign(data, patch);
   localStorage.setItem(srvKey(server), JSON.stringify(data));
@@ -781,6 +796,14 @@ async function restoreChannelsWithHistory(server) {
   }
 
   $('nick-suggest-btn').addEventListener('click', rotateSuggestion);
+})();
+
+(function initTrustedDevice() {
+  $('trusted-device').checked = isTrusted();
+  $('trusted-device').addEventListener('change', function () {
+    localStorage.setItem('wirgloo:cfg:trusted', this.checked);
+    if (!this.checked) clearLocalData();
+  });
 })();
 
 // ── Connect form ─────────────────────────────────────────────────────────────
@@ -2515,6 +2538,7 @@ function onConnectFailed(reason) {
 }
 
 function onDisconnect(reason) {
+  if (!isTrusted()) clearLocalData();
   setConnDot('disconnected');
   clearTimeout(lagTimer);
   clearTimeout(listFilterTimer);
