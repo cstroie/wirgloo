@@ -634,6 +634,7 @@ function saveSrv(server, patch) {
 }
 
 async function getCryptoKey() {
+  if (!crypto?.subtle) return null;
   const stored = localStorage.getItem('wirgloo:key');
   if (stored) {
     const raw = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
@@ -648,19 +649,23 @@ async function getCryptoKey() {
 async function encryptPass(plaintext) {
   if (!plaintext) return '';
   const key = await getCryptoKey();
+  if (!key) return 'b64:' + btoa(unescape(encodeURIComponent(plaintext)));
   const iv  = crypto.getRandomValues(new Uint8Array(12));
   const ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
   const buf = new Uint8Array(12 + ct.byteLength);
   buf.set(iv);
   buf.set(new Uint8Array(ct), 12);
-  return btoa(String.fromCharCode(...buf));
+  return 'aes:' + btoa(String.fromCharCode(...buf));
 }
 
-async function decryptPass(b64) {
-  if (!b64) return '';
+async function decryptPass(stored) {
+  if (!stored) return '';
   try {
-    const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    if (stored.startsWith('b64:')) return decodeURIComponent(escape(atob(stored.slice(4))));
+    const b64 = stored.startsWith('aes:') ? stored.slice(4) : stored;
     const key = await getCryptoKey();
+    if (!key) return '';
+    const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     const pt  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
     return new TextDecoder().decode(pt);
   } catch { return ''; }
