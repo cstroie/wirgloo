@@ -318,6 +318,7 @@ function toggleTheme() {
   const next = isLightTheme() ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('wirgloo:cfg:theme', next);
+  if (state.server) saveSrv(state.server, { theme: next });
   updateThemeBtn();
   recomputeNickColors();
 }
@@ -564,13 +565,24 @@ function applyNetworkSelection(value) {
     else if (net.nick)  $('nick').value = net.nick;
     if (srv.realname)   $('realname').value = srv.realname;
     if (srv.authMethod) setAuthMethod(srv.authMethod);
-    // Preview the server's saved palette instantly. applyPalette does not
-    // touch wirgloo:cfg:palette, so this is not remembered unless the user
-    // actually connects and changes it.
+    if (srv.authMethod && srv.authMethod !== 'none' && srv.pass) {
+      decryptPass(srv.pass).then(p => { $('pass').value = p; });
+    } else {
+      $('pass').value = '';
+    }
+    // Preview the server's saved palette and theme instantly. Neither applyPalette
+    // nor the setAttribute below touch the global cfg keys, so nothing is
+    // remembered unless the user actually connects and changes it.
     applyPalette(srv.palette || localStorage.getItem('wirgloo:cfg:palette') || 'default');
+    const previewTheme = srv.theme || localStorage.getItem('wirgloo:cfg:theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', previewTheme);
+    updateThemeBtn();
   } else {
-    // custom/unknown server — fall back to the global default palette
+    // custom/unknown server — fall back to the global defaults
     applyPalette(localStorage.getItem('wirgloo:cfg:palette') || 'default');
+    const globalTheme = localStorage.getItem('wirgloo:cfg:theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', globalTheme);
+    updateThemeBtn();
   }
 }
 
@@ -604,6 +616,39 @@ function saveSrv(server, patch) {
   const data = loadSrv(server);
   Object.assign(data, patch);
   localStorage.setItem(srvKey(server), JSON.stringify(data));
+}
+
+async function getCryptoKey() {
+  const stored = localStorage.getItem('wirgloo:key');
+  if (stored) {
+    const raw = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
+    return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+  }
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  const raw = await crypto.subtle.exportKey('raw', key);
+  localStorage.setItem('wirgloo:key', btoa(String.fromCharCode(...new Uint8Array(raw))));
+  return key;
+}
+
+async function encryptPass(plaintext) {
+  if (!plaintext) return '';
+  const key = await getCryptoKey();
+  const iv  = crypto.getRandomValues(new Uint8Array(12));
+  const ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
+  const buf = new Uint8Array(12 + ct.byteLength);
+  buf.set(iv);
+  buf.set(new Uint8Array(ct), 12);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function decryptPass(b64) {
+  if (!b64) return '';
+  try {
+    const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const key = await getCryptoKey();
+    const pt  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
+    return new TextDecoder().decode(pt);
+  } catch { return ''; }
 }
 
 function saveIgnored() {
@@ -739,9 +784,6 @@ async function restoreChannelsWithHistory(server) {
 })();
 
 // ── Connect form ─────────────────────────────────────────────────────────────
-// Show/hide the password field; the password is mandatory whenever an
-// authentication method is selected (passwords are never persisted, so a
-// prefilled form would otherwise silently skip authentication).
 function setPassFieldVisible(show) {
   $('pass-field').classList.toggle('hidden', !show);
   $('pass').required = show;
@@ -765,6 +807,11 @@ connectForm.addEventListener('submit', e => {
   }
   const netVal = $('network').value;
   saveSrv(server, { nick, realname: $('realname').value.trim() || nick, authMethod, noverify, lastNetwork: netVal });
+  if (authMethod !== 'none' && pass) {
+    encryptPass(pass).then(enc => saveSrv(server, { pass: enc }));
+  } else {
+    saveSrv(server, { pass: '' });
+  }
   if (netVal === 'custom' || netVal.startsWith('saved:')) {
     saveProfile({ server, port, tls, nick });
     renderSavedProfiles();
@@ -926,8 +973,9 @@ function handle(msg) {
       requestNotifyPermission();
       preloadLogs(state.server).then(() => {
         loadIgnored(state.server);
-        const srvPalette = loadSrv(state.server).palette;
-        if (srvPalette) { applyPalette(srvPalette); recomputeNickColors(); }
+        const srvData = loadSrv(state.server);
+        if (srvData.palette) { applyPalette(srvData.palette); recomputeNickColors(); }
+        if (srvData.theme) { document.documentElement.setAttribute('data-theme', srvData.theme); updateThemeBtn(); recomputeNickColors(); }
         restoreSavedChannels(state.server);
         if (!state.channels.has('*list*')) {
           state.channels.set('*list*', { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', hidden: true });
@@ -980,8 +1028,9 @@ function handle(msg) {
       applyServerMeta(msg.network, msg.servername, msg.welcome);
       const resumedChannels = msg.channels || [];
       loadIgnored(state.server);
-      const resumedPalette = loadSrv(state.server).palette;
-      if (resumedPalette) { applyPalette(resumedPalette); recomputeNickColors(); }
+      const resumedSrv = loadSrv(state.server);
+      if (resumedSrv.palette) { applyPalette(resumedSrv.palette); recomputeNickColors(); }
+      if (resumedSrv.theme) { document.documentElement.setAttribute('data-theme', resumedSrv.theme); updateThemeBtn(); recomputeNickColors(); }
       restoreChannelsWithHistory(state.server).then(() => {
         resumedChannels.forEach(ch => {
           const k = chanKey(ch);
