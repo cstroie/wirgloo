@@ -689,8 +689,13 @@ function restoreSavedChannels(server) {
   const srv = loadSrv(server);
   (srv.channels || []).forEach(ch => {
     const k = chanKey(ch);
-    if (!state.channels.has(k))
-      state.channels.set(k, { messages: [], nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: true });
+    if (!state.channels.has(k)) {
+      const history = loadLog(server, k);
+      const messages = history.length
+        ? [...history, { type: 'session-break', nick: '', text: '', ts: null }]
+        : [];
+      state.channels.set(k, { messages, nicks: new Map(), unread: 0, mention: false, topic: '', modes: new Set(), key: '', offline: true });
+    }
   });
   (srv.dms || []).forEach(nick => { if (!state.channels.has(nick)) ensureChannel(nick); });
   renderChannelList();
@@ -2556,6 +2561,11 @@ function onDisconnect(reason) {
   chatScreen.classList.add('hidden');
   connectScreen.classList.remove('hidden');
   applyNetworkSelection($('network').value);
+  if (isTrusted() && state.server) {
+    const srv = loadSrv(state.server);
+    if (srv.authMethod && srv.authMethod !== 'none' && srv.pass)
+      decryptPass(srv.pass).then(p => { $('pass').value = p; });
+  }
   showConnectError(reason);
 }
 
