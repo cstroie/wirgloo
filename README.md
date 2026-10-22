@@ -131,6 +131,15 @@ make          # builds ./wirgloo
 
 ## Deployment
 
+### Release packages
+
+Each GitHub release ships, for linux amd64 and arm64:
+
+- `wirgloo-<tag>-linux-<arch>.tar.gz` — binary, man page, systemd unit, OpenRC script and `install.sh`. Unpack and run `sudo ./install.sh` (it detects systemd or OpenRC, creates the `wirgloo` user and installs to `/opt/wirgloo`; `sudo ./install.sh --uninstall` removes it).
+- `.deb`, `.rpm` and `.apk` packages — `dpkg -i`, `rpm -i` or `apk add --allow-untrusted`. They install the binary to `/opt/wirgloo`, the man page to `/usr/share/man/man1`, and the systemd unit (deb/rpm) or OpenRC script (apk).
+
+Nothing is started automatically; enable the service as shown below. Build them locally with `packaging/build.sh <arch> <tag>` (needs [nfpm](https://nfpm.goreleaser.com) for the packages).
+
 ### Systemd (recommended)
 
 ```sh

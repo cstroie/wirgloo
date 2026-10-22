@@ -1,0 +1,32 @@
+name: wirgloo
+arch: ${GOARCH}
+platform: linux
+version: ${VERSION}
+version_schema: none
+section: net
+maintainer: Costin Stroie <costinstroie@eridu.eu.org>
+description: Self-hosted web IRC client (single binary, IRC over WebSocket)
+homepage: https://github.com/cstroie/wirgloo
+license: GPL-3.0-or-later
+contents:
+  - src: wirgloo-linux-${GOARCH}
+    dst: /opt/wirgloo/wirgloo
+    file_info: {mode: 0755}
+  - src: wirgloo.1
+    dst: /usr/share/man/man1/wirgloo.1
+    file_info: {mode: 0644}
+  - src: wirgloo.service
+    dst: /lib/systemd/system/wirgloo.service
+    packager: deb
+    file_info: {mode: 0644}
+  - src: wirgloo.service
+    dst: /usr/lib/systemd/system/wirgloo.service
+    packager: rpm
+    file_info: {mode: 0644}
+  - src: wirgloo.openrc
+    dst: /etc/init.d/wirgloo
+    packager: apk
+    file_info: {mode: 0755}
+scripts:
+  postinstall: packaging/postinst.sh
+  postremove: packaging/postrm.sh

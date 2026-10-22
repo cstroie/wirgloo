@@ -128,7 +128,7 @@ After the `connected` event fires and `preloadLogs` resolves, auto-commands from
 
 Tag format: `vYYMMDD` (e.g. `v260526`). `make dist` builds for all five platforms; Linux targets use `CGO_ENABLED=0` for static linking (works on Alpine/musl and any glibc). GitHub Actions (`.github/workflows/release.yml`) runs on each tag push and uploads all binaries to the GitHub release automatically.
 
-Binary name: `wirgloo-<os>-<arch>[.exe]`.
+Binary name: `wirgloo-<os>-<arch>[.exe]`. For linux, `packaging/build.sh <arch> <tag>` (run by the release workflow) also produces `dist/wirgloo-<tag>-linux-<arch>.tar.gz` (with `install.sh`, man page, systemd/OpenRC files) and deb/rpm/apk via nfpm (`packaging/nfpm.yaml`; variables are substituted with `sed` because nfpm doesn't expand them in file paths).
 
 ## Code conventions
 

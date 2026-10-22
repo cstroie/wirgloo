@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: go.mod
 
       - name: Build
         env:
@@ -38,7 +38,20 @@ jobs:
             -o wirgloo-${GOOS}-${GOARCH}${EXT} \
             ./cmd/wirgloo
 
+      - name: Install nfpm
+        if: matrix.goos == 'linux'
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.41.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      # tar.gz with install.sh + service files, and deb/rpm/apk packages.
+      - name: Package
+        if: matrix.goos == 'linux'
+        run: packaging/build.sh ${{ matrix.goarch }} ${GITHUB_REF_NAME}
+
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: wirgloo-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+          files: |
+            wirgloo-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+            dist/*
