@@ -1,5 +1,5 @@
 PREFIX      ?= /opt/wirgloo
-MANDIR      ?= /usr/local/share/man/man1
+MANDIR      ?= $(PREFIX)/man/man1
 BINARY      := wirgloo
 SYSTEMD_DIR ?= /etc/systemd/system
 VERSION     := $(shell date +%y%m%d)
