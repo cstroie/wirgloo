@@ -200,7 +200,9 @@ The session ID was not found (server restarted, or the reconnect window — 60 m
 
 #### `connect_error`
 
-IRC dial or handshake failed before any IRC numerics were received.
+IRC dial or handshake failed before any IRC numerics were received. Also sent when the destination is refused by the server's outbound policy (`-allow-hosts`, private/loopback addresses), and, followed by the server closing the socket, when the `-max-sessions` limit is reached (`"server is full, try again later"`).
+
+Inbound frames larger than 64 KB close the WebSocket.
 
 ```json
 { "type": "connect_error", "text": "dial tcp: connection refused" }

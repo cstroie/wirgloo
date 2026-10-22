@@ -82,7 +82,23 @@ Development mode with debug logging:
 wirgloo \-dev \-log-level debug
 .EE
 .RE
+.SH SECURITY
+wirgloo has no built-in TLS or authentication; run it behind a reverse proxy
+that provides both. By default it refuses to connect to loopback, private and
+link-local addresses (see \fB\-allow-private\fR) and caps concurrent sessions
+(see \fB\-max-sessions\fR).
 .SH FILES
+.TP
+.I /opt/wirgloo/wirgloo
+Default system install location of the binary.
+.TP
+.I /opt/wirgloo/man/man1/wirgloo.1
+This manual page. Use \fBman \-M /opt/wirgloo/man wirgloo\fR or add the
+directory to \fBMANPATH\fR.
+.TP
+.I /etc/init.d/wirgloo
+OpenRC init script, installed by \fBmake install-openrc\fR. Flags are set with
+\fBwirgloo_args\fR in \fI/etc/conf.d/wirgloo\fR.
 .TP
 .I /etc/systemd/system/wirgloo.service
 Example systemd unit file, installed by \fBmake install-service\fR.

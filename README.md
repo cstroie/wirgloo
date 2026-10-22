@@ -7,7 +7,7 @@
 ![Self-hosted](https://img.shields.io/badge/self--hosted-yes-green)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cstroie/wirgloo)](https://goreportcard.com/report/github.com/cstroie/wirgloo)
 
-`scp` the binary to any server, run it, and IRC from any browser — no Node.js, no Docker, no build pipeline, no database. One process, one port.
+`scp` the binary to any server, run it, and IRC from any browser — no Node.js, no build pipeline, no database. One process, one port.
 
 ## Screenshots
 
@@ -138,11 +138,13 @@ make install-service   # installs binary + systemd unit, reloads systemd
 systemctl enable --now wirgloo
 ```
 
-`PREFIX` and `SYSTEMD_DIR` are overridable:
+Everything installs under `/opt/wirgloo` (binary, `man/man1/wirgloo.1`). `PREFIX`, `MANDIR` and `SYSTEMD_DIR` are overridable:
 
 ```sh
-make install-service PREFIX=/opt/wirgloo SYSTEMD_DIR=/etc/systemd/system
+make install-service PREFIX=/srv/wirgloo SYSTEMD_DIR=/etc/systemd/system
 ```
+
+The unit runs as a `DynamicUser` and listens on `127.0.0.1:6677`; edit `ExecStart` in `/etc/systemd/system/wirgloo.service` to change flags. To read the man page: `man -M /opt/wirgloo/man wirgloo` (or add that directory to `MANPATH`).
 
 To remove:
 
@@ -161,10 +163,19 @@ rc-service wirgloo start
 
 Override flags in `/etc/conf.d/wirgloo`, e.g. `wirgloo_args="-addr 127.0.0.1:6677 -base /chat"`.
 
+### Docker
+
+```sh
+docker build -t wirgloo .
+docker run -d -p 127.0.0.1:6677:6677 wirgloo -addr 0.0.0.0:6677
+```
+
+The image listens on 6677 and runs as non-root. The `-addr 0.0.0.0` is needed inside the container; keep the host-side port bound to `127.0.0.1` and put a reverse proxy in front.
+
 ### Manual install
 
 ```sh
-make install   # installs binary to /opt/wirgloo
+make install   # installs binary to /opt/wirgloo, man page to /opt/wirgloo/man/man1
 wirgloo -addr :6677
 ```
 
