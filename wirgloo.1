@@ -42,6 +42,18 @@ Default: \fB500\fR.
 Maximum number of channels returned by \fB/list\fR before a filter is
 applied, sorted by user count.
 Default: \fB50\fR.
+.SS Outbound policy
+.TP
+.BI \-allow-hosts " list"
+Comma-separated IRC servers users may connect to; \fB*.example.org\fR matches
+subdomains. Default: any.
+.TP
+.B \-allow-private
+Allow connecting to loopback, private and link-local addresses. Blocked by
+default so the server cannot be used to reach internal services.
+.TP
+.BI \-max-sessions " n"
+Maximum concurrent sessions; \fB0\fR means unlimited. Default: \fB100\fR.
 .SS Logging
 .TP
 .BI \-log-level " level"

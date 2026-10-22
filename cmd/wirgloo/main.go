@@ -37,6 +37,11 @@ func main() {
 	bufferMax := flag.Int("buffer-max", BufferMax, "max messages buffered per session while browser is disconnected")
 	listPreview := flag.Int("list-preview", ListPreviewSize, "max channels shown in /list before filtering")
 
+	// Outbound policy
+	allowHosts := flag.String("allow-hosts", "", "comma-separated IRC servers users may connect to (supports *.example.org); empty = any")
+	allowPrivate := flag.Bool("allow-private", false, "allow connecting to loopback/private/internal addresses (disabled by default to prevent SSRF)")
+	maxSessions := flag.Int("max-sessions", MaxSessions, "max concurrent sessions (0 = unlimited)")
+
 	// Logging
 	logLevel := flag.String("log-level", "info", "log level: debug, info, warn, error")
 	logJSON := flag.Bool("log-json", false, "emit logs as JSON")
@@ -54,6 +59,9 @@ func main() {
 	WsReconnectWindow = *sessionTimeout
 	BufferMax = *bufferMax
 	ListPreviewSize = *listPreview
+	AllowedHosts = parseAllowedHosts(*allowHosts)
+	AllowPrivate = *allowPrivate
+	MaxSessions = *maxSessions
 
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(*logLevel)); err != nil {

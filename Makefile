@@ -1,11 +1,12 @@
-PREFIX      ?= /usr/local
+PREFIX      ?= /opt/wirgloo
+MANDIR      ?= /usr/local/share/man/man1
 BINARY      := wirgloo
 SYSTEMD_DIR ?= /etc/systemd/system
 VERSION     := $(shell date +%y%m%d)
 
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 
-.PHONY: all build dist $(PLATFORMS) install install-service uninstall uninstall-service clean
+.PHONY: all build dist $(PLATFORMS) install install-service install-openrc uninstall uninstall-service uninstall-openrc clean
 
 all: build
 
@@ -31,14 +32,24 @@ windows/amd64:
 	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY)-windows-amd64.exe ./cmd/wirgloo
 
 install: build
-	install -Dm755 $(BINARY) $(PREFIX)/bin/$(BINARY)
-	install -Dm644 $(BINARY).1 $(PREFIX)/share/man/man1/$(BINARY).1
+	install -Dm755 $(BINARY) $(PREFIX)/$(BINARY)
+	install -Dm644 $(BINARY).1 $(MANDIR)/$(BINARY).1
 
 install-service: install
-	sed 's|/usr/local/bin/igloo|$(PREFIX)/bin/$(BINARY)|' $(BINARY).service \
+	sed 's|/opt/wirgloo/wirgloo|$(PREFIX)/$(BINARY)|' $(BINARY).service \
 		| install -Dm644 /dev/stdin $(SYSTEMD_DIR)/$(BINARY).service
 	systemctl daemon-reload
 	@echo "Run 'systemctl enable --now $(BINARY)' to start the service"
+
+install-openrc: install
+	install -Dm755 $(BINARY).openrc /etc/init.d/$(BINARY)
+	install -d -o $(BINARY) -g $(BINARY) $(PREFIX)/log
+	@echo "Run 'rc-update add $(BINARY) default && rc-service $(BINARY) start'"
+
+uninstall-openrc:
+	rc-service $(BINARY) stop 2>/dev/null || true
+	rc-update del $(BINARY) default 2>/dev/null || true
+	rm -f /etc/init.d/$(BINARY)
 
 uninstall-service:
 	systemctl disable --now $(BINARY) 2>/dev/null || true
@@ -46,8 +57,8 @@ uninstall-service:
 	systemctl daemon-reload
 
 uninstall: uninstall-service
-	rm -f $(PREFIX)/bin/$(BINARY)
-	rm -f $(PREFIX)/share/man/man1/$(BINARY).1
+	rm -f $(PREFIX)/$(BINARY)
+	rm -f $(MANDIR)/$(BINARY).1
 
 clean:
 	rm -f $(BINARY) $(BINARY)-linux-amd64 $(BINARY)-linux-arm64 $(BINARY)-darwin-amd64 $(BINARY)-darwin-arm64 $(BINARY)-windows-amd64.exe

@@ -33,6 +33,10 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// maxWSMessage caps one inbound frame; legitimate messages are a few hundred
+// bytes (IRC lines are limited to 512).
+const maxWSMessage = 64 << 10
+
 // inMsg is the JSON envelope sent by the browser over the WebSocket.
 // Not all fields are used by every message type.
 type inMsg struct {
@@ -72,6 +76,8 @@ func wsHandler(reg *Registry) http.HandlerFunc {
 			return
 		}
 
+		conn.SetReadLimit(maxWSMessage)
+
 		var s *Session
 		if id := r.URL.Query().Get("session"); id != "" {
 			s = reg.Resume(id, conn)
@@ -86,6 +92,14 @@ func wsHandler(reg *Registry) http.HandlerFunc {
 			}
 		}
 		if s == nil {
+			if MaxSessions > 0 && reg.Count() >= MaxSessions {
+				L.Warn("session limit reached", "remote", r.RemoteAddr, "max", MaxSessions)
+				if data, err := json.Marshal(map[string]any{"type": "connect_error", "text": "server is full, try again later"}); err == nil {
+					conn.WriteMessage(websocket.TextMessage, data)
+				}
+				conn.Close()
+				return
+			}
 			s = reg.New(conn)
 			L.Info("client connected", "session", s.ID, "remote", r.RemoteAddr)
 		}

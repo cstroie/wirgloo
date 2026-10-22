@@ -8,9 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 make                        # build ./wirgloo (injects VERSION=YYMMDD via -ldflags)
 go build ./...              # quick build without version injection (version = "dev")
 go vet ./...                # static analysis
+go test ./...               # unit tests (policy, parsing, origin check)
 ```
 
-There are no tests and no linter config files. `go vet` is the only automated check.
+There are a few unit tests in `cmd/wirgloo/policy_test.go` and no linter config. CI runs `go vet` and `go test`.
 
 Run in development mode so static files are served from disk (no rebuild needed after JS/CSS/HTML edits):
 
@@ -42,6 +43,8 @@ All server-side Go lives in `cmd/wirgloo/` as `package main`:
 - `ircReadLoop` — reads raw lines into a channel, closed on disconnect
 
 **`client.go`** — pure IRC protocol: `ircDial`, `ircHandshake`, `ircReadLoop`, `ircParseLine`. No state. `ircParseLine` always appends the trailing parameter into `Params`, so callers can index `msg.Params` uniformly.
+
+**`policy.go`** — outbound dial policy: `-allow-hosts` allowlist, private/loopback blocking (checked in `net.Dialer.Control` after DNS, so rebinding can't bypass it; `-allow-private` disables), `-max-sessions`. WebSocket frames are capped at 64 KB in `handler.go`. System install path is `/opt/wirgloo`.
 
 **`logger.go`** — package-level `L *slog.Logger` and `initLogger()`.
 

@@ -150,14 +150,27 @@ To remove:
 make uninstall   # stops service, removes unit and binary
 ```
 
+### Alpine / OpenRC
+
+```sh
+adduser -S -D -H -h /opt/wirgloo -s /sbin/nologin wirgloo
+make install-openrc            # script -> /etc/init.d/wirgloo, log dir -> /opt/wirgloo/log
+rc-update add wirgloo default
+rc-service wirgloo start
+```
+
+Override flags in `/etc/conf.d/wirgloo`, e.g. `wirgloo_args="-addr 127.0.0.1:6677 -base /chat"`.
+
 ### Manual install
 
 ```sh
-make install   # installs binary to /usr/local/bin
+make install   # installs binary to /opt/wirgloo
 wirgloo -addr :6677
 ```
 
 ### Reverse proxy
+
+Wirgloo has no built-in TLS or authentication. For anything beyond localhost, bind it to `127.0.0.1` (the shipped systemd unit does) and put it behind a TLS reverse proxy that also handles access control. The browser-side password encryption needs HTTPS (or localhost). By default the server refuses to dial loopback/private addresses; use `-allow-hosts` to limit destinations further.
 
 Wirgloo binds to a single port and serves both HTTP and WebSocket on the same connection — no special proxy configuration needed beyond a standard `proxy_pass`. Example nginx snippet:
 
@@ -182,6 +195,9 @@ wirgloo -addr :8080                  # listen address (default: 0.0.0.0:6677)
 wirgloo -session-timeout 2h          # IRC session survives browser disconnect for this long (default: 1h)
 wirgloo -buffer-max 1000             # messages buffered per session while browser is disconnected (default: 500)
 wirgloo -list-preview 100            # channels shown in /list before filtering (default: 50)
+wirgloo -allow-hosts "irc.libera.chat,*.undernet.org"  # restrict which IRC servers users may reach (default: any)
+wirgloo -allow-private               # allow loopback/private addresses (default: blocked, prevents SSRF)
+wirgloo -max-sessions 50             # max concurrent sessions (default: 100, 0 = unlimited)
 wirgloo -log-level debug             # log level: debug, info, warn, error (default: info)
 wirgloo -log-json                    # emit logs as JSON
 wirgloo -dev                         # serve static files from disk instead of embedded (development)

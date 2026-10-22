@@ -1,0 +1,47 @@
+#!/sbin/openrc-run
+# OpenRC init script for Alpine Linux (and other OpenRC systems).
+#
+# Install:
+#   adduser -S -D -H -h /opt/wirgloo -s /sbin/nologin wirgloo
+#   make install                      # binary -> /opt/wirgloo/wirgloo
+#   make install-openrc               # init script + log dir
+#   rc-update add wirgloo default
+#   rc-service wirgloo start
+#
+# Optional overrides go in /etc/conf.d/wirgloo (auto-sourced by
+# openrc-run), e.g.:
+#   wirgloo_args="-addr 127.0.0.1:6677 -base /chat -allow-hosts irc.libera.chat"
+
+name="wirgloo"
+description="wirgloo web IRC client"
+
+: "${wirgloo_user:=wirgloo}"
+: "${wirgloo_group:=wirgloo}"
+: "${wirgloo_home:=/opt/wirgloo}"
+# Bind to localhost by default: wirgloo has no TLS or auth of its own, so it
+# is meant to sit behind a reverse proxy.
+: "${wirgloo_args:=-addr 127.0.0.1:6677}"
+
+# supervise-daemon because wirgloo runs in the foreground and doesn't fork;
+# it also respawns on crash, mirroring Restart=on-failure in the systemd unit.
+supervisor="supervise-daemon"
+command="${wirgloo_home}/wirgloo"
+command_args="${wirgloo_args}"
+command_user="${wirgloo_user}:${wirgloo_group}"
+directory="${wirgloo_home}"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+respawn_delay=5
+respawn_max=0
+
+# Created by `make install-openrc`, owned by wirgloo_user.
+output_log="${wirgloo_home}/log/wirgloo.log"
+error_log="${wirgloo_home}/log/wirgloo.log"
+
+# SIGTERM closes sessions; give in-flight work a moment before escalating.
+retry="TERM/20/KILL/5"
+
+depend() {
+	need net
+	use dns
+}

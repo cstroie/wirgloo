@@ -3,7 +3,7 @@ Description=wirgloo web IRC client
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/wirgloo
+ExecStart=/opt/wirgloo/wirgloo -addr 127.0.0.1:6677
 Restart=on-failure
 RestartSec=5
 DynamicUser=yes

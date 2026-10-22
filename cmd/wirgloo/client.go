@@ -29,18 +29,26 @@ type ircMessage struct {
 	Trailing string            // text after the " :" separator
 }
 
+const dialTimeout = 15 * time.Second
+
 // ircDial opens a TCP connection to server:port. When useTLS is true the
 // connection is wrapped in TLS; noVerify disables certificate verification
 // (covers self-signed certs, hostname mismatches, expired certs, etc.).
 // TCP keepalives are enabled on the underlying socket so silent connection
 // drops are detected promptly.
 func ircDial(server string, port int, useTLS, noVerify bool) (net.Conn, error) {
+	if server == "" || port < 1 || port > 65535 {
+		return nil, fmt.Errorf("invalid server or port")
+	}
+	if !hostAllowed(server) {
+		return nil, fmt.Errorf("server %q is not allowed by this instance", server)
+	}
 	addr := fmt.Sprintf("[%s]:%d", server, port)
 	if server[0] != '[' && !containsColon(server) {
 		addr = fmt.Sprintf("%s:%d", server, port)
 	}
 	if useTLS {
-		conn, err := tls.Dial("tcp", addr, &tls.Config{
+		conn, err := tls.DialWithDialer(newDialer(), "tcp", addr, &tls.Config{
 			ServerName:         server,
 			InsecureSkipVerify: noVerify,
 		})
@@ -50,7 +58,7 @@ func ircDial(server string, port int, useTLS, noVerify bool) (net.Conn, error) {
 		setKeepalive(conn.NetConn())
 		return conn, nil
 	}
-	conn, err := net.Dial("tcp", addr)
+	conn, err := newDialer().Dial("tcp", addr)
 	if err != nil {
 		return nil, err
 	}

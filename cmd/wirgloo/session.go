@@ -172,6 +172,13 @@ func (r *Registry) Detach(s *Session) {
 	})
 }
 
+// Count returns the number of live sessions.
+func (r *Registry) Count() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return len(r.sessions)
+}
+
 // Remove deletes a session from the registry. It does not close the session.
 func (r *Registry) Remove(id string) {
 	r.mu.Lock()
